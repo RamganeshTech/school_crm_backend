@@ -70,11 +70,11 @@ const uploadSchema = new Schema<IRecordUpload>({
 
 
 
-const StudentRecordSchema =new  mongoose.Schema<IStudentRecord>({
+const StudentRecordSchema = new mongoose.Schema<IStudentRecord>({
     // === REFERENCES ===
     schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "SchoolModel", default: null },
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: "StudentNewModel", default: null },
-    studentName: { type: String },
+    studentName: { type: String, default: null },
 
     // === TIME CONTEXT (The Critical Field) ===
     academicYear: { type: String, required: true }, // e.g., "2025-2026"
@@ -151,6 +151,7 @@ const StudentRecordSchema =new  mongoose.Schema<IStudentRecord>({
 StudentRecordSchema.index({
     schoolId: 1,
     studentId: 1,
+    academicYear: 1
 });
 
 const StudentRecordModel = mongoose.model('StudentRecord', StudentRecordSchema);

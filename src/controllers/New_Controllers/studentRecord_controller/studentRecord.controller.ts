@@ -1314,6 +1314,165 @@ export const getAllStudentRecords = async (req: RoleBasedRequest, res: Response)
     }
 };
 
+export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const {
+            schoolId,
+            page = 1,
+            limit = 10,
+            search,
+            academicYear,   // e.g., "2025-2026"
+            classId,
+            sectionId,
+            isActive,
+            isBusApplicable,
+            isFullyPaid,
+            hasConcession,
+            hasBusPoint
+        } = req.query;
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        const targetYear = academicYear;
+        const pageNum = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skipNum = (pageNum - 1) * limitNum;
+
+        // ==========================================
+        // STAGE 1: Early Match on StudentMain (Performance Optimization)
+        // Filter the main students first to reduce the join workload
+        // ==========================================
+        const initialMatch: any = {
+            schoolId: new mongoose.Types.ObjectId(schoolId as string)
+        };
+
+        if (search) {
+            // Assuming the main student model has studentName and srId
+            const searchRegex = new RegExp(search as string, "i");
+            initialMatch.$or = [
+                { studentName: searchRegex },
+                { srId: searchRegex }
+            ];
+        }
+
+        // ==========================================
+        // STAGE 2: The Post-Lookup Filters
+        // If the user filters by Class or Fees, we apply this AFTER the join
+        // ==========================================
+        const postLookupMatch: any = {};
+
+        if (classId) postLookupMatch["recordData.classId"] = new mongoose.Types.ObjectId(classId as string);
+        if (sectionId) postLookupMatch["recordData.sectionId"] = new mongoose.Types.ObjectId(sectionId as string);
+
+        if (isActive !== undefined) postLookupMatch["recordData.isActive"] = isActive === 'true';
+        if (isBusApplicable !== undefined) postLookupMatch["recordData.isBusApplicable"] = isBusApplicable === 'true';
+        if (isFullyPaid !== undefined) postLookupMatch["recordData.isFullyPaid"] = isFullyPaid === 'true';
+        if (hasConcession !== undefined) postLookupMatch["recordData.concession.isApplied"] = hasConcession === 'true';
+        if (hasBusPoint !== undefined) {
+            if (hasBusPoint === 'true') postLookupMatch["recordData.busPoint"] = { $ne: null };
+            else postLookupMatch["recordData.busPoint"] = null;
+        }
+
+
+        // ==========================================
+        // STAGE 3: The Aggregation Pipeline (TypeScript Safe)
+        // ==========================================
+        const pipeline: mongoose.PipelineStage[] = [];
+
+        // 1. Filter students right away
+        pipeline.push({ $match: initialMatch });
+
+        // 2. Targeted Left Join
+        pipeline.push({
+            $lookup: {
+                from: "studentrecords", // **IMPORTANT: Verify this matches your MongoDB collection name (usually plural lowercase)**
+                let: { student_id: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$studentId", "$$student_id"] },
+                                    { $eq: ["$academicYear", targetYear] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "recordData"
+            }
+        });
+
+        // 3. Unwind (preserveNullAndEmptyArrays keeps students WITHOUT records)
+        pipeline.push({
+            $unwind: {
+                path: "$recordData",
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        // 4. Apply post-lookup filters safely
+        if (Object.keys(postLookupMatch).length > 0) {
+            pipeline.push({ $match: postLookupMatch });
+        }
+
+        // 5. Format the output
+        pipeline.push({
+            $project: {
+                _id: 1, // StudentMain _id
+                studentName: 1,
+                srId: 1,
+                studentImage: 1,
+
+                recordId: "$recordData._id",
+                academicYear: targetYear,
+                className: "$recordData.className",
+                sectionName: "$recordData.sectionName",
+                isActive: { $ifNull: ["$recordData.isActive", false] },
+                isBusApplicable: { $ifNull: ["$recordData.isBusApplicable", false] },
+                isFullyPaid: { $ifNull: ["$recordData.isFullyPaid", false] },
+                hasConcession: { $ifNull: ["$recordData.concession.isApplied", false] }
+            }
+        });
+
+        // 6. Pagination & Counting
+        pipeline.push({
+            $facet: {
+                metadata: [{ $count: "total" }],
+                data: [
+                    { $sort: { studentName: 1 } },
+                    { $skip: skipNum },
+                    { $limit: limitNum }
+                ]
+            }
+        });
+
+
+        const result = await StudentNewModel.aggregate(pipeline); // **IMPORTANT: Execute on StudentMainModel**
+
+        // Extract facet data
+        const total = result[0].metadata[0]?.total || 0;
+        const records = result[0].data;
+
+        // --- RESPONSE ---
+        res.status(200).json({
+            ok: true,
+            data: records,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Get All Student Records Error:", error);
+        res.status(500).json({ ok: false, message: error.message });
+    }
+};
 
 export const getStudentRecordById = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -1365,6 +1524,120 @@ export const getStudentRecordById = async (req: RoleBasedRequest, res: Response)
                 ...studentRecord.toObject(),
                 receipts: transactions // Attached array of receipts
             }
+        });
+
+    } catch (error: any) {
+        console.error("Get Student Record Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
+    }
+};
+
+
+export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { schoolId, studentId } = req.params;
+        const { academicYear } = req.query; // Allows overriding the year from the frontend
+
+        if (!schoolId || !studentId) {
+            return res.status(400).json({ ok: false, message: "schoolId and studentId are required" });
+        }
+
+        // 1. Fetch Main Student Identity (Always Required)
+        // We populate class/section here so we have fallback names if the record doesn't exist
+        const studentMain: any = await StudentNewModel.findOne({ _id: studentId, schoolId })
+            .populate("currentClassId", "name")
+            .populate("currentSectionId", "name");
+
+        if (!studentMain) {
+            return res.status(404).json({ ok: false, message: "Student not found in main registry" });
+        }
+
+        // 2. Determine Academic Year
+        let targetYear = academicYear;
+        if (!targetYear) {
+            const schoolDoc = await SchoolModel.findById(schoolId);
+            if (!schoolDoc) return res.status(404).json({ ok: false, message: "School not found" });
+            targetYear = schoolDoc.currentAcademicYear;
+        }
+
+        if (!targetYear) {
+            return res.status(400).json({ ok: false, message: "Academic Year is required" });
+        }
+
+        // 3. Try to Fetch The Ledger (Student Record)
+        const studentRecord = await StudentRecordModel.findOne({
+            schoolId,
+            studentId,
+            academicYear: targetYear
+        })
+            .populate("studentId", "studentName srId _id studentImage newOld") // Profile Info
+            .populate("classId", "name")   // Class Name
+            .populate("sectionId", "name") // Section Name
+            .populate("concession.approvedBy", "userName role");
+
+        let responseData;
+
+        // 4. Construct the Unified Response
+        if (studentRecord) {
+            // --- SCENARIO A: Record Exists ---
+            // Fetch All Receipts (Transactions) linked to this Ledger
+            const transactions = await FeeTransactionModel.find({
+                recordId: studentRecord._id
+            })
+                .sort({ paymentDate: -1 }) // Latest first
+                .populate("collectedBy", "userName");
+
+            responseData = {
+                ...studentRecord.toObject(),
+                _id: studentRecord._id, // Important flag for frontend
+
+                // Safety overrides just in case main model was updated
+                studentImage: studentMain.studentImage || null,
+                newOld: studentRecord.newOld || studentMain.newOld,
+
+                receipts: transactions, // Attached array of receipts
+                isRecordCreated: true
+            };
+        } else {
+            // --- SCENARIO B: NO Record (Virtual Ghost Record) ---
+            responseData = {
+                _id: null, // Crucial flag for frontend (means "Not Enrolled for this Year")
+                academicYear: targetYear,
+
+                schoolId: schoolId,
+                studentId: studentMain._id,
+                studentName: studentMain.studentName,
+                srId: studentMain.srId,
+                studentImage: studentMain.studentImage || null,
+                newOld: studentMain.newOld || "old",
+
+                // Use main profile class/section as fallback
+                classId: studentMain.currentClassId?._id || null,
+                sectionId: studentMain.currentSectionId?._id || null,
+                className: studentMain.currentClassId?.name || null,
+                sectionName: studentMain.currentSectionId?.name || null,
+
+                // Default Financials (Zeros)
+                feeStructure: { admissionFee: 0, firstTermAmt: 0, secondTermAmt: 0, busFirstTermAmt: 0, busSecondTermAmt: 0 },
+                feePaid: { admissionFee: 0, firstTermAmt: 0, secondTermAmt: 0, busFirstTermAmt: 0, busSecondTermAmt: 0 },
+                dues: { admissionDues: 0, firstTermDues: 0, secondTermDues: 0, busfirstTermDues: 0, busSecondTermDues: 0 },
+                concession: { isApplied: false, type: null, value: 0, inAmount: 0, proof: null },
+
+                isActive: false, // Record is not active yet
+                isBusApplicable: false,
+                isFullyPaid: false,
+                busPoint: null,
+
+                receipts: [], // Empty array, no transactions yet
+                isRecordCreated: false
+
+            };
+        }
+
+        // 5. Return Combined Data
+        return res.status(200).json({
+            ok: true,
+            data: responseData
         });
 
     } catch (error: any) {
@@ -1449,6 +1722,11 @@ export const toggleStudentRecordStatus = async (req: RoleBasedRequest, res: Resp
     try {
         const { id } = req.params;
         const { isActive } = req.body;
+
+
+        if (!id || id === "null") {
+            return res.status(400).json({ ok: false, message: "id is required, check whether this student record has cretead or not first" });
+        }
 
         if (isActive === undefined) {
             return res.status(400).json({ ok: false, message: "isActive boolean is required" });

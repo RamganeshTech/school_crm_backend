@@ -166,13 +166,9 @@ export const deleteFeeStructure = async (req: RoleBasedRequest, res: Response) =
   try {
     const { id } = req.params;
 
-
     const updatedFee:any = await FeeStructureModel.findByIdAndDelete(
       id
     );
-
-
-
 
     await archiveData({
       schoolId: updatedFee.schoolId,

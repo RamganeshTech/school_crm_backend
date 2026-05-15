@@ -2,7 +2,8 @@ import express from "express";
 import {
   applyConcession, collectFeeAndManageRecord, deleteStudentRecord,
   getAllStudentRecords,
-  getStudentRecordById, revertFeeTransaction,
+  getAllStudentRecordsV1,
+  getStudentRecordById, getStudentRecordByIdV1, revertFeeTransaction,
   toggleStudentRecordStatus, updateConcessionDetails,
   uploadConcessionProof
 } from "../../../../controllers/New_Controllers/studentRecord_controller/studentRecord.controller.js";
@@ -43,7 +44,7 @@ studentRecordRoutes.put(
   updateConcessionDetails
 );
 
-//  one fule only allowed, it will take the first file
+//  one file only allowed, it will take the first file
 studentRecordRoutes.put(
   "/update/proof",
   multiRoleAuth("correspondent", "accountant", "principal", "administrator"),
@@ -71,6 +72,14 @@ studentRecordRoutes.get(
   getStudentRecordById
 );
 
+studentRecordRoutes.get(
+  "/v1/getrecord/:schoolId/:studentId",
+  multiRoleAuth("administrator", "correspondent", "principal", "viceprincipal", "accountant", "teacher", "parent"),
+  featureGuard("studentRecord"),
+
+  getStudentRecordByIdV1
+);
+
 
 studentRecordRoutes.get(
   "/getall",
@@ -78,6 +87,15 @@ studentRecordRoutes.get(
   featureGuard("studentRecord"),
 
   getAllStudentRecords
+);
+
+
+
+studentRecordRoutes.get(
+  "/v1/getall",
+  multiRoleAuth("correspondent", "accountant", "principal", "administrator", "viceprincipal", "teacher", "parent"),
+  featureGuard("studentRecord"),
+  getAllStudentRecordsV1
 );
 
 
