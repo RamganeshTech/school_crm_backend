@@ -267,7 +267,6 @@ export const loginUser = async (req: RoleBasedRequest, res: Response) => {
       return res.status(401).json({ ok: false, message: "Invalid credentials" });
     }
 
-    console.log("")
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -366,8 +365,8 @@ export const isAuthenticated = async (req: RoleBasedRequest, res: Response) => {
       userName: isExist.userName,
       isAuthenticated: true,
       isPlatformAdmin: isExist?.isPlatformAdmin || false,
-      studentId: user?.studentId || [],
-      assignments: user?.assignments || [],
+      studentId: isExist?.studentId || [],
+      assignments: isExist?.assignments || [],
       // schoolId: user?.schoolId || null,
     };
 

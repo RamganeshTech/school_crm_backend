@@ -1570,7 +1570,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
             studentId,
             academicYear: targetYear
         })
-            .populate("studentId", "studentName srId _id studentImage newOld") // Profile Info
+            .populate("studentId", "studentName srId _id studentImage newOld currentClassId currentSectionId") // Profile Info
             .populate("classId", "name")   // Class Name
             .populate("sectionId", "name") // Section Name
             .populate("concession.approvedBy", "userName role");

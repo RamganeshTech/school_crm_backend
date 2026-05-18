@@ -289,24 +289,42 @@ export const removeStudentFromClass = async (req: RoleBasedRequest, res: Respons
             (paid.busFirstTermAmt || 0) +
             (paid.busSecondTermAmt || 0);
 
-        if (totalPaid > 0) {
-            return res.status(400).json({
-                ok: false,
-                message: `Action Blocked: Student has already paid ₹${totalPaid} for this academic year. You cannot remove them directly. Please refund or adjust fees first.`
-            });
-        }
+        // if (totalPaid > 0) {
+        //     return res.status(400).json({
+        //         ok: false,
+        //         message: `Action Blocked: Student has already paid ₹${totalPaid} for this academic year. You cannot remove them directly. Please refund or adjust fees first.`
+        //     });
+        // }
 
         // 3. REMOVE the specific Class Assignment Record
         // This removes the link between Student <-> Class for that year
-        const deletedRecord = await StudentRecordModel.findByIdAndDelete(existingRecord._id);
+        // const deletedRecord = await StudentRecordModel.findByIdAndDelete(existingRecord._id);
 
 
-        if (!deletedRecord) {
-            return res.status(404).json({
-                ok: false,
-                message: `No class assignment found for this student in ${targetYear}`
-            });
-        }
+        // if (!deletedRecord) {
+        //     return res.status(404).json({
+        //         ok: false,
+        //         message: `No class assignment found for this student in ${targetYear}`
+        //     });
+        // }
+
+
+        existingRecord.classId = null
+        existingRecord.sectionId = null
+        existingRecord.className = null
+        existingRecord.sectionName = null
+
+        await existingRecord.save()
+
+        // await StudentRecordModel.findByIdAndUpdate(
+        //     existingRecord._id,
+        //     {
+        //         $set: {
+        //             classId: null,
+        //             sectionId: null
+        //         }
+        //     }
+        // );
 
         // 4. SYNC StudentNewModel (Conditionally)
         // We only reset the student's "Current Status" if we just deleted the record 

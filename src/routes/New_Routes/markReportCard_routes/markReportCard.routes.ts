@@ -45,7 +45,7 @@ markReportRoutes.put('/update/:reportId',
 // ==========================================
 markReportRoutes.delete('/delete/:reportId',
     // It's usually safer to restrict deletions to higher-level admin roles
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher",),
     // featureGuard("marks"),
     deleteMarkReport
 );

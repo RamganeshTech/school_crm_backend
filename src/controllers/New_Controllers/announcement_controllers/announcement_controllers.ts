@@ -10,6 +10,7 @@ import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import { getIO } from "../../../config/socket.js";
 
 export const createAnnouncement = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -160,6 +161,15 @@ export const createAnnouncement = async (req: RoleBasedRequest, res: Response) =
 
         await newAnnouncement.save();
 
+        // --- NEW: EMIT REAL-TIME EVENT ---
+        try {
+            // Get the socket instance and broadcast to the specific school room
+            const io = getIO();
+            io.to(schoolId.toString()).emit("new_announcement", newAnnouncement);
+        } catch (socketError) {
+            console.error("Socket emission failed, but announcement was created:", socketError);
+        }
+
         await createAuditLog(req, {
             action: "create",
             module: "announcement",
@@ -215,7 +225,7 @@ export const getAnnouncements = async (req: RoleBasedRequest, res: Response) => 
             // 1. Fetch Parent's Student IDs
             const parentUser: any = await UserModel.findById(userId).select("studentId");
 
-            console.log("parentUser", parentUser)
+            // console.log("parentUser", parentUser)
             if (parentUser?.studentId?.length > 0) {
                 // 2. Fetch the actual Student documents to get their Classes
                 const students = await StudentNewModel.find({
@@ -223,14 +233,14 @@ export const getAnnouncements = async (req: RoleBasedRequest, res: Response) => 
                 }).select("currentClassId");
 
 
-                console.log("students", students)
+                // console.log("students", students)
 
                 // 3. Extract class IDs from the students
                 allowedClassIds = students
                     .map(s => s.currentClassId)
                     .filter(id => id); // Remove nulls/undefined
 
-                console.log("allowedClassIds", allowedClassIds)
+                // console.log("allowedClassIds", allowedClassIds)
 
             }
         }

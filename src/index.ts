@@ -3,6 +3,8 @@ import express, { type Response } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import http from 'http';
+
 // const mongoose = require('mongoose');
 // const cookieParser = require('cookie-parser')
 // const cors = require("cors");
@@ -46,10 +48,12 @@ import CalendarRoutes from './routes/New_Routes/academicCalendar_routes/academic
 import markReportRoutes from './routes/New_Routes/markReportCard_routes/markReportCard.routes.js';
 import connectDB from './config/connectDB.js';
 import type { RoleBasedRequest } from './utils/types.js';
+import { initSocket } from './config/socket.js';
 
 
 dotenv.config({ path: '.env.production' });
 const app = express()
+const server = http.createServer(app);
 
 app.use(cors({
     origin: process.env.FRONTEND_URL,
@@ -114,29 +118,17 @@ app.get("/api/health-check", (req: RoleBasedRequest, res: Response) => {
     });
 });
 
+
+initSocket(server);
+
 let PORT = process.env.PORT || 4000
 
 connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server running in the http://locahost:${PORT}`)
-    })
+    // app.listen(PORT, () => {
+    //     console.log(`Server running in the http://locahost:${PORT}`)
+    // })
+
+    server.listen(PORT, () => {
+        console.log(`🚀 HTTP & Socket Server running on http://localhost:${PORT}`);
+    });
 }).catch(err => console.log(err.message))
-
-
-
-// import express from 'express';
-
-// const app = express();
-// const PORT = 5000; // or your preferred port
-
-// app.get('/', (req:RoleBasedRequest, res:Response) => {
-//     res.send('BMB School Backend is Live! 🚀');
-// });
-
-// app.listen(PORT, () => {
-//     console.log('-------------------------------------------');
-//     console.log(`🚀 Server started on http://localhost:${PORT}`);
-//     console.log(`📡 Status: Running with Native TypeScript`);
-//     console.log(`🕒 Last Restart: ${new Date().toLocaleTimeString()}`);
-//     console.log('-------------------------------------------');
-// });

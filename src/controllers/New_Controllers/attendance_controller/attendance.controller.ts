@@ -307,7 +307,7 @@ export const getClassAttendanceHistory = async (req: RoleBasedRequest, res: Resp
 export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { studentId } = req.params;
-        const { month, year } = req.query; // Expects month=10, year=2024
+        const { month, year, academicYear } = req.query; // Expects month=10, year=2024
 
         if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
             return res.status(400).json({ ok: false, message: "Invalid Student ID" });
@@ -331,11 +331,18 @@ export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Re
             };
         }
 
+
+
         // 2. The Query
-        const query = {
+        let query: any = {
             ...dateFilter,
-            "records.studentId": studentId
+            "records.studentId": studentId,
+
         };
+
+        if (academicYear) {
+            query.academicYear= academicYear
+        }
 
         // 3. Fetch Data
         // records.$ matches ONLY the array element for this specific student
@@ -357,7 +364,7 @@ export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Re
         });
 
         // 5. Calculate Summary
-        const summary:any = {
+        const summary: any = {
             totalDays: formattedData.length,
             present: formattedData.filter(d => d.status.toLowerCase() === 'present').length,
             absent: formattedData.filter(d => d.status.toLowerCase() === 'absent').length,

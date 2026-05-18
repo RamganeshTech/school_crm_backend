@@ -327,6 +327,7 @@ export const getFinanceStats = async (req: RoleBasedRequest, res: Response) => {
         const result = stats[0] || { totalIncome: 0, totalExpense: 0, netBalance: 0, transactionCount: 0 };
 
         res.status(200).json({
+            ok:true,
             rangeUsed: range,
             dateStart: start.toDateString(),
             dateEnd: end.toDateString(),
@@ -335,7 +336,7 @@ export const getFinanceStats = async (req: RoleBasedRequest, res: Response) => {
 
     } catch (error: any) {
         console.error("Stats Error:", error);
-        res.status(500).json({ message: "Error fetching finance stats" });
+        res.status(500).json({ message: "Error fetching finance stats", ok:false });
     }
 };
 
@@ -422,11 +423,12 @@ export const getFinanceTimeline = async (req: RoleBasedRequest, res: Response) =
         res.status(200).json({
             //  dateStart: start.toDateString(),
             // dateEnd: end.toDateString(),
+            ok:true,
             data: Object.values(formattedData)
         });
 
     } catch (error: any) {
-        res.status(500).json({ message: "Error fetching timeline" });
+        res.status(500).json({ message: "Error fetching timeline",ok:false });
     }
 };
 
@@ -490,10 +492,10 @@ export const getOutstandingStats = async (req: RoleBasedRequest, res: Response) 
 
         const result = stats[0] || { totalOutstanding: 0, breakdown: {} };
 
-        res.status(200).json({ data: result });
+        res.status(200).json({ data: result, ok:true });
 
     } catch (error: any) {
         console.error("Outstanding Error:", error);
-        res.status(500).json({ message: "Error fetching outstanding fees" });
+        res.status(500).json({ message: "Error fetching outstanding fees" , ok:false});
     }
 };

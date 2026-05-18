@@ -12,7 +12,6 @@ export const featureGuard = (moduleName: string) => {
             // 1. Get School ID (Assuming it's in req.user from auth middleware, or req.query)
             // Adjust this based on how you pass schoolId (headers, query, or token)
             const schoolId = req.user?.schoolId || req.query.schoolId;
-            console.log("schoolId", req)
 
             if (!schoolId) {
                 return res.status(400).json({ ok: false, message: "School ID missing" });
