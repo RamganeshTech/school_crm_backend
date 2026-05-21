@@ -13,11 +13,13 @@ export const createMarkReport = async (req: RoleBasedRequest, res: Response) => 
     try {
         let {
             schoolId,
-            classId,
+            classId, 
             sectionId,
             studentId,
             academicYear,
             subjects = [], // Array of subjects
+            examRecords = [], // Array of examRecords
+            markReportConfigId,
             remarks,
             isAbsent
         } = req.body;
@@ -52,6 +54,8 @@ export const createMarkReport = async (req: RoleBasedRequest, res: Response) => 
             sectionId: sectionId || null,
             studentId,
             subjects, // Injects the whole array at once
+            examRecords,
+            markReportConfigId,
             remarks: remarks || "",
             isAbsent: isAbsent || false,
             recordedBy
@@ -129,8 +133,10 @@ export const updateMarkReport = async (req: RoleBasedRequest, res: Response) => 
             studentId,
             academicYear,
             subjects,
+            examRecords,        // NEW: Replaces 'subjects'
             remarks,
-            isAbsent
+            isAbsent,
+            markReportConfigId
         } = req.body;
 
         if (!reportId) {
@@ -145,9 +151,16 @@ export const updateMarkReport = async (req: RoleBasedRequest, res: Response) => 
         if (sectionId !== undefined) updateData.sectionId = sectionId;
         if (studentId !== undefined) updateData.studentId = studentId;
         if (academicYear !== undefined) updateData.academicYear = academicYear;
+        if (markReportConfigId !== undefined) updateData.markReportConfigId = academicYear;
 
 
         if (subjects && Array.isArray(subjects)) updateData.subjects = subjects; // This replaces the old array with the new one
+
+        // THE UPGRADE: Update the entire exam records array if provided
+        if (examRecords && Array.isArray(examRecords)) {
+            updateData.examRecords = examRecords; 
+        }
+
         if (remarks !== undefined) updateData.remarks = remarks;
         if (isAbsent !== undefined) updateData.isAbsent = isAbsent;
 
@@ -232,5 +245,60 @@ export const getMarkReportById = async (req: RoleBasedRequest, res: Response) =>
     } catch (error: any) {
         console.error("Error fetching single mark report:", error);
         res.status(500).json({ ok: false, message: "Server error. Please try again later.", error: error.message });
+    }
+};
+
+
+export const getMarkReportByIdV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { studentId } = req.params;
+        const { academicYear, classId, sectionId } = req.query;
+
+        if (!studentId || !academicYear) {
+            return res.status(400).json({ ok: false, message: "Student ID and Academic Year are required." });
+        }
+
+        // 1. Try to find the existing report
+        let report = await MarkReportModel.findOne({ 
+            studentId, 
+            academicYear 
+        })
+        .populate("studentId", "studentName srId studentImage")
+        .populate("classId", "name className") // Adjust to match your schema
+        .populate("sectionId", "name");
+
+        // 2. If it exists, return it immediately
+        if (report) {
+            return res.status(200).json({
+                ok: true,
+                message: "Existing mark report retrieved.",
+                data: report,
+                isNew: false
+            });
+        }
+
+        // 3. If it DOES NOT exist, return a blank template
+        // We do NOT save this to the database yet. We wait for the teacher to actually enter marks and click "Save".
+        const blankTemplate = {
+            studentId,
+            academicYear,
+            classId,
+            sectionId,
+            terms: [], // Assuming your schema has an array of terms/exams
+            overallGrade: null,
+            totalMarks: 0,
+            remarks: ""
+        };
+
+        res.status(200).json({
+            ok: true,
+            message: "No existing report found. Initialized blank template.",
+            data: blankTemplate,
+            isNew: true // Tells the frontend that a POST (Create) is needed instead of a PUT (Update)
+        });
+
+    } catch (error: any) {
+        console.error("Error initializing mark report:", error);
+        res.status(500).json({ ok: false, message: "Server error.", error: error.message });
     }
 };

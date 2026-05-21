@@ -6,7 +6,8 @@ import {
     getAllMarkReports,
     updateMarkReport,
     deleteMarkReport,
-    getMarkReportById
+    getMarkReportById,
+    getMarkReportByIdV1
 } from '../../../controllers/New_Controllers/markReportCard_controllers/markReportCard.controller.js';
 import { multiRoleAuth } from '../../../middleware/multiRoleRequest.js';
 
@@ -55,6 +56,14 @@ markReportRoutes.get('/get/:reportId',
     // featureGuard("marks"),
     getMarkReportById
 );
+
+
+markReportRoutes.get('/v1/get/student/:studentId',
+    multiRoleAuth("correspondent", "administrator", "principal", "teacher", "parent", "viceprincipal"),
+    // featureGuard("marks"),
+    getMarkReportByIdV1
+);
+
 
 
 

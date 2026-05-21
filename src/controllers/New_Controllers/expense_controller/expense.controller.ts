@@ -649,3 +649,166 @@ export const deleteProof = async (req: RoleBasedRequest, res: Response) => {
         res.status(500).json({ ok: false, message: "Failed to delete proof", error: error.message });
     }
 };
+
+
+export const getExpenseReport = async (req: any, res: Response) => {
+    try {
+        const {
+            schoolId,
+            academicYear,
+            startDate,
+            endDate,
+            verificationStatus,
+            paymentMode,
+            range // e.g., 'month' or 'year' (optional, defaults to daily)
+        } = req.query;
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        // 1. Build the dynamic Match Stage (Filters)
+        const matchStage: any = {
+            schoolId: new mongoose.Types.ObjectId(schoolId as string)
+        };
+
+        if (academicYear) matchStage.academicYear = academicYear;
+        if (verificationStatus) matchStage.verificationStatus = verificationStatus;
+        if (paymentMode) matchStage.paymentMode = paymentMode;
+
+        // Date Filtering
+        if (startDate && endDate) {
+            matchStage.date = {
+                $gte: new Date(startDate as string),
+                $lte: new Date(endDate as string)
+            };
+        }
+
+        // Determine date grouping format (Daily vs Monthly)
+        const dateFormat = range === 'year' ? "%Y-%m" : "%Y-%m-%d";
+
+        // 2. The $facet Aggregation
+        const report = await ExpenseModel.aggregate([
+            { $match: matchStage },
+            {
+                $facet: {
+                    // --- PIPELINE A: TIMELINE FOR LINE CHART ---
+                    // Groups by Date AND Category to allow multi-line charts
+                    timeline: [
+                        {
+                            $group: {
+                                _id: {
+                                    dateLabel: { $dateToString: { format: dateFormat, date: "$date" } },
+                                    category: "$category"
+                                },
+                                dailyCategoryTotal: { $sum: "$amount" }
+                            }
+                        },
+                        { $sort: { "_id.dateLabel": 1 } }
+                    ],
+
+                    // --- PIPELINE B: SUMMARY FOR PIE/DONUT CHART ---
+                    // Groups purely by Category for the whole selected period
+                    categorySummary: [
+                        {
+                            $group: {
+                                _id: "$category",
+                                totalAmount: { $sum: "$amount" },
+                                count: { $sum: 1 }
+                            }
+                        },
+                        { $sort: { totalAmount: -1 } } // Highest expenses first
+                    ],
+
+                    // --- PIPELINE C: TOTAL KPI ---
+                    // Gets the grand total of the filtered selection
+                    // --- PIPELINE C: TOTAL KPI ---
+                    kpi: [
+                        {
+                            $group: {
+                                _id: null,
+                                grandTotal: { $sum: "$amount" },
+                                totalTransactions: { $sum: 1 },
+                                // Add this to break down by status
+                                verificationStats: {
+                                    $push: { status: "$verificationStatus", amount: "$amount" }
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                grandTotal: 1,
+                                totalTransactions: 1,
+                                // Inside your kpi aggregation pipeline's $project stage:
+                                pendingAmount: {
+                                    $sum: {
+                                        $map: {
+                                            input: { $filter: { input: "$verificationStats", as: "item", cond: { $eq: ["$$item.status", "pending"] } } },
+                                            as: "filtered",
+                                            in: "$$filtered.amount"
+                                        }
+                                    }
+                                },
+                                pendingCount: { // NEW: Count of pending docs
+                                    $size: { $filter: { input: "$verificationStats", as: "item", cond: { $eq: ["$$item.status", "pending"] } } }
+                                },
+                                verifiedAmount: {
+                                    $sum: {
+                                        $map: {
+                                            input: { $filter: { input: "$verificationStats", as: "item", cond: { $eq: ["$$item.status", "verified"] } } },
+                                            as: "filtered",
+                                            in: "$$filtered.amount"
+                                        }
+                                    }
+                                },
+                                verifiedCount: { // NEW: Count of verified docs
+                                    $size: { $filter: { input: "$verificationStats", as: "item", cond: { $eq: ["$$item.status", "verified"] } } }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]);
+
+        // 3. Format the Timeline Data for Chart.js
+        // Transforms the flat DB response into a clean { date: "2023-10", "Transport": 500, "Office": 200 } object
+        const rawTimeline = report[0].timeline;
+        const formattedTimeline: any = {};
+
+        rawTimeline.forEach((item: any) => {
+            const date = item._id.dateLabel;
+            const cat = item._id.category || "Uncategorized";
+            const amt = item.dailyCategoryTotal;
+
+            if (!formattedTimeline[date]) {
+                formattedTimeline[date] = { date, totalDaily: 0 };
+            }
+
+            formattedTimeline[date][cat] = amt;
+            formattedTimeline[date].totalDaily += amt;
+        });
+
+        // 4. Clean up Category Summary & KPIs
+        const categorySummary = report[0].categorySummary.map((item: any) => ({
+            category: item._id || "Uncategorized",
+            amount: item.totalAmount,
+            count: item.count
+        }));
+
+        const kpi = report[0].kpi[0] || { grandTotal: 0, totalTransactions: 0 };
+
+        res.status(200).json({
+            ok: true,
+            data: {
+                kpi,
+                categorySummary,
+                timeline: Object.values(formattedTimeline)
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Expense Report Error:", error);
+        res.status(500).json({ ok: false, message: "Error generating expense report" });
+    }
+};

@@ -365,11 +365,16 @@ export const getAllStudents = async (req: RoleBasedRequest, res: Response) => {
             sectionId,
             page = 1,
             limit = 10,
+            academicYear,
             search // Optional search by name/srId
         } = req.query;
 
         if (!schoolId) {
             return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        if(academicYear){
+            
         }
 
         // Build Filter
@@ -390,6 +395,8 @@ export const getAllStudents = async (req: RoleBasedRequest, res: Response) => {
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
+
+
 
         // Execute Query
         const students = await StudentNewModel.find(filter)
@@ -412,6 +419,55 @@ export const getAllStudents = async (req: RoleBasedRequest, res: Response) => {
                 currentPage: pageNum,
                 pageSize: limitNum
             }
+        });
+
+    } catch (error: any) {
+        console.error("Get All Students Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
+    }
+};
+
+
+export const getAllStudentsWithoutPaginationV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const {
+            schoolId,
+            classId,
+            sectionId,
+            search // Optional search by name/srId
+        } = req.query;
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        // Build Filter
+        const filter:any = { schoolId };
+
+        if (classId) filter.currentClassId = classId;
+        if (sectionId) filter.currentSectionId = sectionId;
+
+        // Search Logic (Name OR SR-ID)
+        if (search) {
+            filter.$or = [
+                { studentName: { $regex: search, $options: "i" } },
+                { srId: { $regex: search, $options: "i" } }
+            ];
+        }
+
+
+        // Execute Query
+        const students = await StudentNewModel.find(filter)
+            .select("-__v") // Exclude internal version
+            .populate("currentClassId", "name")
+            .populate("currentSectionId", "name")
+            .sort({ createdAt: -1 }) // Newest first
+
+
+        return res.status(200).json({
+            ok: true,
+            data: students,
+            message : "fetched studnets"
         });
 
     } catch (error: any) {

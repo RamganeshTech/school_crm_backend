@@ -38,7 +38,7 @@ const userSchema = new Schema<IUser>(
       // required: true, 
       // enum: ["correspondent", "teacher", "principal", "viceprincipal", "administrator", "parent", "accountant", null]
     },
-    phoneNo: { type: String },
+    phoneNo: { type: String },    
     schoolCode: { type: String, default: null },
     schoolId: { type: mongoose.Schema.ObjectId, default: null, ref: "SchoolModel" },
     isPlatformAdmin: { type: Boolean }, // internal field for conditional storage

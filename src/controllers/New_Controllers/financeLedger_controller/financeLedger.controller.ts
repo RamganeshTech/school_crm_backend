@@ -448,7 +448,7 @@ export const getOutstandingStats = async (req: RoleBasedRequest, res: Response) 
 
         const query = {
             schoolId: new mongoose.Types.ObjectId(schoolId),
-            isArchived: false,
+            isActive: true,
             academicYear: academicYear
         };
 

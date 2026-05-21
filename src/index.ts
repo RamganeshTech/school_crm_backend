@@ -49,6 +49,7 @@ import markReportRoutes from './routes/New_Routes/markReportCard_routes/markRepo
 import connectDB from './config/connectDB.js';
 import type { RoleBasedRequest } from './utils/types.js';
 import { initSocket } from './config/socket.js';
+import markReportConfigRoutes from './routes/New_Routes/markReportCard_routes/markReportCofig.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -94,6 +95,7 @@ app.use('/api/club/quiz/attempt', clubQuizAttemptRoutes)
 app.use('/api/club/quiz', clubQuizRoutes)
 
 app.use('/api/markreport', markReportRoutes)
+app.use('/api/markreport/config', markReportConfigRoutes)
 
 // not mentioned in the docuemntation
 app.use('/api/financeledger', financeRoutes)

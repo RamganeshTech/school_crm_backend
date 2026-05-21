@@ -202,7 +202,7 @@ export const createUser = async (req: RoleBasedRequest, res: Response) => {
     const newUser = await UserModel.create(userData)
 
 
-    const userResponse:any = newUser.toObject();
+    const userResponse: any = newUser.toObject();
     delete userResponse.password;
 
 
@@ -227,7 +227,237 @@ export const createUser = async (req: RoleBasedRequest, res: Response) => {
       user: newUser,
       ok: true
     });
-  } catch (err:any) {
+  } catch (err: any) {
+    console.error(err);
+    if (err.code === 11000) {
+      // duplicate key error
+      return res.status(400).json({ message: "duplicate data, please use different email or phone Number", ok: false });
+    }
+    res.status(500).json({ ok: false, message: "Server error", error: err?.message });
+  }
+};
+
+
+export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { email, userName, password, phoneNo,
+      role, schoolId,
+      isPlatformAdmin = false } = req.body;
+
+
+    // const allowedRoles = ["correspondent", "teacher", "principal", "viceprincipal", "administrator", "parent", "accountant"]
+
+    // if(!allowedRoles.includes(role)){
+    //   return res.status(400).json({ ok: false, message: `role not allowed, only ${allowedRoles.join(", ")} are allowed` });
+
+    // }
+
+    if (!schoolId) {
+      return res.status(400).json({ message: "schoolId is required", ok: false });
+    }
+
+
+    if (!role) {
+      return res.status(400).json({ message: "role must be provided", ok: false });
+    }
+
+
+    // Validate required fields
+    if (!phoneNo) {
+      return res.status(400).json({ ok: false, message: "phoneNo is required" });
+    }
+
+    // if (phoneNo?.length !== 10) {
+    //   return res.status(400).json({ ok: false, message: "phoneNo should be 10 digits" });
+    // }
+
+    if (phoneNo && !isValidPhone(phoneNo)) {
+      return res.status(400).json({ message: "Invalid phone number format", ok: false });
+    }
+
+    // 2. Validate formats (assuming you have these helpers)
+    if (email && !isValidEmail(email)) {
+      return res.status(400).json({ message: "Invalid email format", ok: false });
+    }
+
+    if (!userName || !password) {
+      return res.status(400).json({ ok: false, message: "userName, password are required" });
+    }
+
+    // Check for existing platform admin if isPlatformAdmin = true
+    if (isPlatformAdmin) {
+      const existingAdmin = await UserModel.findOne({ isPlatformAdmin: true });
+
+      if (existingAdmin) {
+        return res.status(400).json({ message: "Only one platform admin is allowed", ok: false });
+      }
+    }
+
+
+    let schoolCode = null;
+    if (schoolId) {
+      const isExist = await SchoolModel.findById(schoolId);
+
+      if (!isExist) {
+        return res.status(400).json({ message: "schoolId is not valid", ok: false });
+      }
+
+      schoolCode = isExist?.schoolCode
+    }
+
+
+
+    const filter = {
+      $or: [{ email: email }, { phoneNo: phoneNo }]
+    }
+    const isDuplicate = await UserModel.findOne(filter);
+
+    if (isDuplicate) {
+      return res.status(400).json({ message: "Email or phoneno is already in use", ok: false });
+    }
+
+    // ==========================================
+    // 3. TEACHER SPECIFIC VALIDATION (The Logic You Asked For)
+    // ==========================================
+    // let validAssignments = [];
+
+    // // Only process assignments if the role is actually a Teacher
+    // if (role.toLowerCase() === "teacher" && assignments.length > 0) {
+
+    //   // Loop through each assignment sent from frontend
+    //   for (const item of assignments) {
+    //     // A. Validate Class
+    //     if (!mongoose.Types.ObjectId.isValid(item.classId)) {
+    //       return res.status(400).json({ ok: false, message: `Invalid Class ID: ${item.classId}` });
+    //     }
+
+    //     const classDoc = await ClassModel.findById(item.classId);
+    //     if (!classDoc) {
+    //       return res.status(404).json({ ok: false, message: `Class not found for ID: ${item.classId}` });
+    //     }
+
+    //     // Security: Ensure Class belongs to the same school
+    //     if (classDoc.schoolId.toString() !== schoolId) {
+    //       return res.status(400).json({ ok: false, message: "Cannot assign class from a different school" });
+    //     }
+
+    //     // B. Handle Sections logic
+    //     let finalSectionId = null;
+
+    //     if (classDoc.hasSections) {
+    //       // If class HAS sections (e.g. Grade 10), sectionId is REQUIRED
+    //       if (!item.sectionId || !mongoose.Types.ObjectId.isValid(item.sectionId)) {
+    //         return res.status(400).json({ 
+    //           ok: false, 
+    //           message: `Class '${classDoc.name}' has sections. You must provide a valid sectionId.` 
+    //         });
+    //       }
+
+    //       const sectionDoc = await SectionModel.findById(item.sectionId);
+    //       if (!sectionDoc) {
+    //          return res.status(404).json({ ok: false, message: `Section not found for ID: ${item.sectionId}` });
+    //       }
+
+    //       // Security: Ensure Section belongs to that Class
+    //       if (sectionDoc.classId.toString() !== item.classId) {
+    //          return res.status(400).json({ ok: false, message: "Section does not belong to the selected Class" });
+    //       }
+
+    //       finalSectionId = item.sectionId;
+
+    //     } else {
+    //       // If class has NO sections (e.g. LKG), sectionId must be ignored/null
+    //       finalSectionId = null; 
+    //     }
+
+    //     // Add to valid list
+    //     validAssignments.push({
+    //       classId: item.classId,
+    //       sectionId: finalSectionId
+    //     });
+    //   }
+    // }
+
+
+
+    // ============================================================
+    // 4. REVERSE LOOKUP (THE FIX)
+    // ============================================================
+    // Search for any existing students in this school with this Parent Mobile Number
+    
+    const linkedStudents = await StudentNewModel.find({
+      schoolId: schoolId,
+      "mandatory.mobileNumber": phoneNo, // Matching the schema structure
+      isActive: true // Optional: Only link active students
+    }).select('_id'); // We only need the IDs
+
+    // let finalRole = null; // Default to null or what was sent
+    let parentData: any = [];
+
+    // If we found students, this user IS A PARENT
+    if (linkedStudents.length > 0) {
+      // finalRole = "parent"; // Auto-assign role
+      // studentIds = linkedStudents.map(student => student._id);
+      parentData = { studentId: linkedStudents.map(s => s._id) };
+      // console.log(`[Auto-Link] Found ${studentIds.length} students for new user.`);
+    }
+
+    // If no role passed and no students found, you might want a default (like 'guest')
+    // or keep it null. For now, we leave it as calculated above.
+
+    // ============================================================
+
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Normalize role to lowercase for checking
+    // const isTeacher = role.toLowerCase() === "teacher";
+    // Prepare user data
+    const userData = {
+      userName,
+      password: hashedPassword,
+      role: role,
+      phoneNo,
+      email,
+      schoolCode: schoolCode,
+      schoolId: schoolId,
+
+      ...parentData,   // this will decide whether we need to store the studentId or not
+
+      // ...(isTeacher && { assignments: [] }), // only store if true
+      ...(isPlatformAdmin ? { isPlatformAdmin: true } : {}) // only store if true
+    };
+
+    const newUser = await UserModel.create(userData)
+
+
+    const userResponse: any = newUser.toObject();
+    delete userResponse.password;
+
+
+    // console.log("newuser", newUser)
+
+    if (req && req?.user) {
+      await createAuditLog(req, {
+        action: "create",
+        module: "user",
+        targetId: newUser._id,
+        description: `user created (${newUser._id})`,
+        status: "success"
+      });
+
+    }
+
+
+
+
+    return res.status(201).json({
+      message: "User created successfully",
+      user: newUser,
+      ok: true
+    });
+  } catch (err: any) {
     console.error(err);
     if (err.code === 11000) {
       // duplicate key error
@@ -304,10 +534,12 @@ export const loginUser = async (req: RoleBasedRequest, res: Response) => {
         studentId: user?.studentId || [],
         assignments: user?.assignments || [],
         schoolId: user?.schoolId,
+        schoolName: (user?.schoolId as any)?.name
+
       }
     });
 
-  } catch (err:any) {
+  } catch (err: any) {
     console.error(err);
     return res.status(500).json({ ok: false, message: "Server error", error: err?.message });
   }
@@ -333,7 +565,7 @@ export const logoutUser = async (req: RoleBasedRequest, res: Response) => {
       ok: true,
       message: "Logout successful, token invalidated on client"
     });
-  } catch (err:any) {
+  } catch (err: any) {
     console.error(err);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
@@ -367,6 +599,7 @@ export const isAuthenticated = async (req: RoleBasedRequest, res: Response) => {
       isPlatformAdmin: isExist?.isPlatformAdmin || false,
       studentId: isExist?.studentId || [],
       assignments: isExist?.assignments || [],
+      schoolName: (isExist?.schoolId as any)?.name
       // schoolId: user?.schoolId || null,
     };
 
@@ -437,7 +670,7 @@ export const deleteUser = async (req: RoleBasedRequest, res: Response) => {
       user: isExist,
       ok: true
     });
-  } catch (err:any) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ ok: false, message: "Server error", error: err?.message });
   }
@@ -472,7 +705,7 @@ export const updateUser = async (req: RoleBasedRequest, res: Response) => {
     // 3. Build Update Object (Strict Whitelisting)
     // We strictly only allow these three fields. 
     // If the user sends 'role' or 'password', it is ignored here.
-    const updates:any = {};
+    const updates: any = {};
     if (email) updates.email = email;
     if (phoneNo) updates.phoneNo = phoneNo;
     if (userName) updates.userName = userName;
@@ -529,7 +762,7 @@ export const updateUser = async (req: RoleBasedRequest, res: Response) => {
       user: updatedUser,
     });
 
-  } catch (err:any) {
+  } catch (err: any) {
     console.error("Error updating user:", err);
     // Handle Mongoose duplicate key error (fallback)
     if (err.code === 11000) {
@@ -589,7 +822,7 @@ export const assignRolesToUser = async (req: RoleBasedRequest, res: Response) =>
       user: updatedUser,
     });
 
-  } catch (err:any) {
+  } catch (err: any) {
     console.error("Error updating user:", err);
 
     return res.status(500).json({ ok: false, message: "Server error", error: err.message });

@@ -1,5 +1,5 @@
 import express from "express";
-import { assignStudentToParent, createStudentProfile, deleteStudent, getAllStudents, getStudentById, removeStudentFromParent, updateStudent } from "../../../controllers/New_Controllers/studentNew_controllers/studentNew.controller.js";
+import { assignStudentToParent, createStudentProfile, deleteStudent, getAllStudents, getAllStudentsWithoutPaginationV1, getStudentById, removeStudentFromParent, updateStudent } from "../../../controllers/New_Controllers/studentNew_controllers/studentNew.controller.js";
 // import { upload } from "../../../Utils/s3upload.js";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 import { upload } from "../../../utils/s4UploadsNew.js";
@@ -58,6 +58,15 @@ studentRoutes.get(
 
   getAllStudents
 );
+
+studentRoutes.get(
+  "/v1/without-pagination/getall",
+  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "teacher", "parent"),
+  featureGuard("studentRecord"),
+  getAllStudentsWithoutPaginationV1
+);
+
+
 
 studentRoutes.put(
   "/assignstudent",

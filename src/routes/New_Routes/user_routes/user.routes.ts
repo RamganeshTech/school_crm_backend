@@ -1,11 +1,13 @@
 import express from 'express'
-import { assignRolesToUser, createUser, deleteUser, isAuthenticated, loginUser, logoutUser, updateUser, getParentStudents } from '../../../controllers/New_Controllers/user_contorllers/user.controllers.js';
+import { assignRolesToUser, createUser, deleteUser, isAuthenticated, loginUser, logoutUser, updateUser, getParentStudents, createUserV1 } from '../../../controllers/New_Controllers/user_contorllers/user.controllers.js';
 import { multiRoleAuth } from '../../../middleware/multiRoleRequest.js';
 import { getSingleUser, getUsersBySchool } from '../../../controllers/New_Controllers/user_contorllers/userUtil.controller.js';
 
 const userRoutes = express.Router()
 
-userRoutes.post('/create', createUser);
+// but this is old , belwo normal '/create' is the new one 
+userRoutes.post('/v1/create', multiRoleAuth("correspondent", "administrator"), createUser);
+userRoutes.post('/create', multiRoleAuth("correspondent", "administrator"), createUserV1);
 
 userRoutes.post('/login', loginUser);
 userRoutes.post('/logout', logoutUser);
