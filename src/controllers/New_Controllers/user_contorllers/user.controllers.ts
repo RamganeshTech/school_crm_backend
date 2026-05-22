@@ -384,7 +384,7 @@ export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
     // 4. REVERSE LOOKUP (THE FIX)
     // ============================================================
     // Search for any existing students in this school with this Parent Mobile Number
-    
+
     const linkedStudents = await StudentNewModel.find({
       schoolId: schoolId,
       "mandatory.mobileNumber": phoneNo, // Matching the schema structure
@@ -846,9 +846,23 @@ export const getParentStudents = async (req: RoleBasedRequest, res: Response) =>
     // Find the parent user and populate the studentId array
     const parentRecord = await UserModel.findById(userId).populate({
       path: "studentId",
-      model: "StudentNewModel", // Explicitly telling Mongoose which model to use
+      model: "StudentNewModel",
+      populate: [
+        {
+          path: "currentClassId", // Must match the field name in StudentNewSchema
+          model: "ClassModel",    // Must match the ref in StudentNewSchema
+          select: "name"          // Populate only the name and _id
+        },
+        {
+          path: "currentSectionId", // Populate section too if needed
+          model: "SectionModel",
+          select: "name"
+        }
+      ]
+      // Explicitly telling Mongoose which model to use
       // select: "studentName srId studentImage schoolId", // Optional: Un-comment this if you only want specific fields
-    });
+    })
+
 
     if (!parentRecord) {
       return res.status(404).json({

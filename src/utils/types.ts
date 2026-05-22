@@ -7,6 +7,7 @@ export interface UserPayload extends JwtPayload {
     schoolId: string;
     role: string;
     isPlatformAdmin: boolean;
+    userName: string
 }
 
 // 2. The extended Request type you'll use in controllers

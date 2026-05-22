@@ -68,7 +68,7 @@ studentRoutes.get(
 
 
 
-studentRoutes.put(
+studentRoutes.put( 
   "/assignstudent",
   multiRoleAuth("correspondent", "administrator"),
   featureGuard("studentRecord"),

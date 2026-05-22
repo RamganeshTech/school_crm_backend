@@ -68,6 +68,7 @@ export const multiRoleAuth = (...allowedRoles: string[]) => {
             schoolId: decoded.schoolId,
             role: decoded.role,
             isPlatformAdmin: decoded.isPlatformAdmin,
+            userName: decoded?.userName
         };
 
         next();

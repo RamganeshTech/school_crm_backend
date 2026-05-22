@@ -23,9 +23,6 @@ userRoutes.put("/update/:id",
     multiRoleAuth("correspondent", "teacher", "principal", "parent", "accountant", "administrator", "viceprincipal"),
     updateUser);
 
-
-
-
 //  new route (in role  if you send the all in the role params , then youll get all the users irrespective of role)
 userRoutes.get(
     "/:role/:schoolId",
