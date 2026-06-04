@@ -4,8 +4,9 @@ import type { NextFunction, Response } from "express";
 import SchoolModel from "../models/New_Model/SchoolModel/shoolModel.model.js";
 import type { RoleBasedRequest } from "../utils/types.js";
 
+type featureType = "attendance" | "studentRecord" | "expense" | "club" | "announcement" | "markReport"
 // This function takes the module name you want to protect (e.g., 'attendance')
-export const featureGuard = (moduleName: string) => {
+export const featureGuard = (moduleName: featureType) => {
     // return async (req, res, next) => {
     return async (req: RoleBasedRequest, res: Response, next: NextFunction) => {
         try {

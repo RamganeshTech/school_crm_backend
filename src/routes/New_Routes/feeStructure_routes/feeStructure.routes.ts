@@ -22,7 +22,7 @@ feeStructureRoutes.post(
 // Access: Accountant also needs this to see fees
 feeStructureRoutes.get(
   "/getbyclass",
-  multiRoleAuth("correspondent", "administrator", "principal", "accountant", "teacher", "parent"),
+  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "teacher", "parent"),
   getFeeStructureByClass
 );
 
@@ -36,7 +36,7 @@ feeStructureRoutes.delete(
 
 feeStructureRoutes.get(
   "/getall",
-  multiRoleAuth("correspondent", "administrator", "principal", "accountant", "teacher", "parent"),
+  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "teacher", "parent"),
   getFeeStructure
 );
 

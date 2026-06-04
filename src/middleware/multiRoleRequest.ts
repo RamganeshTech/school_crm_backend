@@ -5,7 +5,10 @@ import type { NextFunction, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import type { RoleBasedRequest, UserPayload } from '../utils/types.js';
 
-export const multiRoleAuth = (...allowedRoles: string[]) => {
+type UserRole = "correspondent" | "teacher" | "principal" | "viceprincipal" | "administrator" | "parent" | "accountant" ;
+
+
+export const multiRoleAuth = (...allowedRoles: UserRole[]) => {
     return async (req: RoleBasedRequest, res: Response, next: NextFunction) => {
         // 1. Extract BOTH potential tokens
         const authHeader = req.headers.authorization;
@@ -55,7 +58,7 @@ export const multiRoleAuth = (...allowedRoles: string[]) => {
         }
 
         // 5. Role Validation
-        if (!allowedRoles.includes(decoded.role)) {
+        if (!allowedRoles.includes(decoded.role as UserRole)) {
             return res.status(403).json({
                 message: `Access denied: Role '${decoded.role}' is not authorized.`,
                 ok: false

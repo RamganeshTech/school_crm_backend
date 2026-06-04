@@ -1,10 +1,10 @@
 import express from "express";
 import {
-  applyConcession, collectFeeAndManageRecord, deleteStudentRecord,
+  applyConcession, approveStudentRecordConcession, collectFeeAndManageRecord, deleteStudentRecord,
   getAllStudentRecords,
   getAllStudentRecordsV1,
   getStudentRecordById, getStudentRecordByIdV1, revertFeeTransaction,
-  toggleStudentRecordStatus, updateConcessionDetails,
+  toggleStudentRecordStatus, toggleStudentRecordStatusV1, updateConcessionDetails,
   uploadConcessionProof
 } from "../../../../controllers/New_Controllers/studentRecord_controller/studentRecord.controller.js";
 // import { upload } from "../../../../Utils/s3upload.js";
@@ -51,6 +51,14 @@ studentRecordRoutes.put(
   featureGuard("studentRecord"),
   upload.single("file"),
   uploadConcessionProof
+);
+
+
+studentRecordRoutes.patch(
+  "/v1/verify-concession/:studentId",
+  multiRoleAuth("correspondent", "principal", "administrator", "viceprincipal"),
+  featureGuard("studentRecord"),
+  approveStudentRecordConcession
 );
 
 
@@ -113,6 +121,14 @@ studentRecordRoutes.patch(
   featureGuard("studentRecord"),
 
   toggleStudentRecordStatus
+);
+
+studentRecordRoutes.patch(
+  "/v1/togglestatus/:studentId",
+  multiRoleAuth("administrator", "correspondent", "accountant", "administrator"),
+  featureGuard("studentRecord"),
+
+  toggleStudentRecordStatusV1
 );
 
 

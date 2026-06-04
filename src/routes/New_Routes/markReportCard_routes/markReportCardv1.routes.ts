@@ -1,18 +1,22 @@
 import express from 'express';
-import { multiRoleAuth } from '../../../middleware/multiRoleRequest.js';
-import { createMarkReport,
+
+// Adjust these imports based on your actual middleware locations
+import {
+    createMarkReport,
     getAllMarkReports,
     updateMarkReport,
     deleteMarkReport,
-    getMarkReportById, } from '../../../controllers/New_Controllers/markReportCard_controllers/markReportCard.controller.js';
+    getMarkReportById,
+    getMarkReportByIdV1
+} from '../../../controllers/New_Controllers/markReportCard_controllers/markReportCardv1.controller.js';
+import { multiRoleAuth } from '../../../middleware/multiRoleRequest.js';
 
-
-const markReportRoutes = express.Router();
+const markReportRoutesV1 = express.Router();
 
 // ==========================================
 // 1. CREATE MARK REPORT
 // ==========================================
-markReportRoutes.post('/create',
+markReportRoutesV1.post('/create',
     multiRoleAuth("correspondent", "administrator", "teacher"),
     // featureGuard("marks"), // Adjust this feature name to match your database settings
     createMarkReport
@@ -21,7 +25,7 @@ markReportRoutes.post('/create',
 // ==========================================
 // 2. GET ALL MARK REPORTS
 // ==========================================
-markReportRoutes.get('/get-all',
+markReportRoutesV1.get('/get-all',
     // Parents and students typically need read-only access to their own marks
     multiRoleAuth("correspondent", "administrator", "principal", "teacher", "parent", "viceprincipal"),
     // featureGuard("marks"),
@@ -31,7 +35,7 @@ markReportRoutes.get('/get-all',
 // ==========================================
 // 3. UPDATE MARK REPORT
 // ==========================================
-markReportRoutes.put('/update/:reportId',
+markReportRoutesV1.put('/update/:reportId',
     multiRoleAuth("correspondent", "administrator", "teacher"),
     // featureGuard("marks"),
     updateMarkReport
@@ -40,19 +44,27 @@ markReportRoutes.put('/update/:reportId',
 // ==========================================
 // 4. DELETE MARK REPORT
 // ==========================================
-markReportRoutes.delete('/delete/:reportId',
+markReportRoutesV1.delete('/delete/:reportId',
     // It's usually safer to restrict deletions to higher-level admin roles
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher",),
     // featureGuard("marks"),
     deleteMarkReport
 );
 
-markReportRoutes.get('/get/:reportId',
+markReportRoutesV1.get('/get/:reportId',
     multiRoleAuth("correspondent", "administrator", "principal", "teacher", "parent", "viceprincipal"),
     // featureGuard("marks"),
     getMarkReportById
 );
 
 
+markReportRoutesV1.get('/get/student/:studentId',
+    multiRoleAuth("correspondent", "administrator", "principal", "teacher", "parent", "viceprincipal"),
+    // featureGuard("marks"),
+    getMarkReportByIdV1
+);
 
-export default markReportRoutes;
+
+
+
+export default markReportRoutesV1;

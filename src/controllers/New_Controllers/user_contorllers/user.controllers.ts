@@ -10,6 +10,7 @@ import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import { transporter } from "../../../services/mail_services/forgotPasswordMail.js";
 
 const JWT_SECRET = process.env.JWT_SECRET! // store in env
 
@@ -773,6 +774,136 @@ export const updateUser = async (req: RoleBasedRequest, res: Response) => {
 };
 
 
+// ==========================================
+// 1. REQUEST PASSWORD RESET (Sends Email)
+// ==========================================
+export const requestPasswordReset = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await UserModel.findOne({ email: email.toLowerCase() });
+
+    // SECURITY: We return a success message even if the user doesn't exist 
+    // to prevent malicious actors from guessing valid emails in your system.
+    if (!user) {
+      return res.status(200).json({
+        ok: true,
+                message: "If an account with that email exists, a password reset link has been sent."
+      });
+    }
+
+    // SECURITY: Create a dynamic secret using the user's CURRENT password hash.
+    // If the password changes, this secret changes, instantly invalidating the token.
+    const secret = process.env.JWT_SECRET + user.password;
+
+    // Token expires in 15 minutes
+    const token = jwt.sign({ email: user.email, id: user._id }, secret, { expiresIn: "15m" });
+
+    // Construct the frontend reset URL
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${user._id}/${token}`;
+
+    // Professional Email Template
+    const mailOptions = {
+      from: `"buildmyschool" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: "Password Reset Request",
+      html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #ffffff;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h2 style="color: #1e293b; margin: 0;">Password Reset Request</h2>
+                    </div>
+                    <div style="color: #475569; font-size: 16px; line-height: 1.6;">
+                        <p>Hello ${user.userName},</p>
+                        <p>We received a request to reset the password for your account. This link is valid for exactly <strong>15 minutes</strong>.</p>
+                        <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
+                        
+                        <div style="text-align: center; margin: 40px 0;">
+                            <a href="${resetLink}" style="background-color: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                                Reset Your Password
+                            </a>
+                        </div>
+                        
+                        <p style="font-size: 14px;">Or copy and paste this link into your browser:</p>
+                        <p style="font-size: 14px; word-break: break-all; color: #3b82f6;">
+                            <a href="${resetLink}">${resetLink}</a>
+                        </p>
+                    </div>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+                    <div style="text-align: center; color: #94a3b8; font-size: 12px;">
+                        <p>This is an automated message, please do not reply.</p>
+                        <p>&copy; ${new Date().getFullYear()} School Management System</p>
+                    </div>
+                </div>
+            `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.status(200).json({
+      message: "If an account with that email exists, a password reset link has been sent."
+    });
+
+  } catch (error: any) {
+    console.error("Password reset request error:", error);
+    return res.status(500).json({ message: "An error occurred while processing your request." });
+  }
+};
+
+// ==========================================
+// 2. EXECUTE PASSWORD RESET
+// ==========================================
+export const resetPassword = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { id, token } = req.params;
+    const { newPassword, confirmPassword } = req.body;
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "Both password fields are required." });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match." });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long." });
+    }
+
+    const user = await UserModel.findById(id);
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired link." });
+    }
+
+    // Reconstruct the dynamic secret
+    const secret = process.env.JWT_SECRET + user.password;
+
+    try {
+      // Verify the token. If the password was changed, the secret is different, and this throws an error.
+      jwt.verify(token, secret);
+    } catch (error) {
+      return res.status(400).json({ message: "Invalid or expired link. Please request a new password reset." });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update the user
+    user.password = hashedPassword;
+    await user.save();
+
+    return res.status(200).json({ message: "Password has been successfully reset. You can now log in." });
+
+  } catch (error: any) {
+    console.error("Password reset execution error:", error);
+    return res.status(500).json({ message: "An error occurred while resetting your password." });
+  }
+};
+
 
 
 
@@ -898,3 +1029,9 @@ export const getParentStudents = async (req: RoleBasedRequest, res: Response) =>
     });
   }
 };
+
+
+
+
+
+

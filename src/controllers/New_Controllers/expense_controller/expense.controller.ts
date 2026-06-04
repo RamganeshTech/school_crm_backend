@@ -27,6 +27,7 @@ const processFiles = async (filesArray: any[]) => {
     );
 };
 
+// const VALID_PAYMENT_MODES = ["cash", "bank_transfer", "cheque", "upi"] as const;
 
 export const addExpense = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -69,7 +70,7 @@ export const addExpense = async (req: RoleBasedRequest, res: Response) => {
         // 2. PAYMENT MODE VALIDATION
         // -------------------------------------------------
         let chequeData = {};
-        if (paymentMode === "cheque") {
+        if (paymentMode === "cheque" || paymentMode === "bank_transfer") {
             if (!chequeNumber || !bankName) {
                 return res.status(400).json({
                     ok: false,
@@ -398,7 +399,7 @@ export const updateExpense = async (req: RoleBasedRequest, res: Response) => {
         let chequeData = expense.chequeDetails; // Default to existing
         const modeToCheck = paymentMode || expense.paymentMode; // New mode or existing
 
-        if (modeToCheck === "cheque") {
+        if (modeToCheck === "cheque" || modeToCheck === "bank_transfer") {
             // If updating to cheque, ensure we have details either in body or existing DB
             const cNum = chequeNumber || expense.chequeDetails?.chequeNumber;
             const bName = bankName || expense.chequeDetails?.bankName;

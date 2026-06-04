@@ -6,6 +6,15 @@ export interface IUserAssignment {
   sectionId: Types.ObjectId | null;
 }
 
+// 1. Reusable Upload Interface
+export interface IUpload {
+  type: "image";
+  key?: string;
+  url?: string;
+  originalName?: string;
+  uploadedAt: Date;
+}
+
 export interface IUser extends Document {
   email?: string;
   userName: string;
@@ -17,6 +26,7 @@ export interface IUser extends Document {
   isPlatformAdmin?: boolean;
   assignments: IUserAssignment[];
   studentId: Types.ObjectId[]; // Links to children if role is parent
+  profileImage: IUpload | null
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +38,14 @@ const assignmentSchema = new Schema<IUserAssignment>({
 }, { _id: true });
 
 
+const uploadSchema = new Schema<IUpload>({
+  type: { type: String, enum: ["image"] },
+  key: { type: String, },
+  url: { type: String, },
+  originalName: String,
+  uploadedAt: { type: Date, default: new Date() }
+});
+
 const userSchema = new Schema<IUser>(
   {
     email: { type: String, },
@@ -38,10 +56,13 @@ const userSchema = new Schema<IUser>(
       // required: true, 
       // enum: ["correspondent", "teacher", "principal", "viceprincipal", "administrator", "parent", "accountant", null]
     },
-    phoneNo: { type: String },    
+    phoneNo: { type: String },
     schoolCode: { type: String, default: null },
     schoolId: { type: mongoose.Schema.ObjectId, default: null, ref: "SchoolModel" },
     isPlatformAdmin: { type: Boolean }, // internal field for conditional storage
+    profileImage: {
+      type: uploadSchema, default: null
+    },
 
     // only for teachers
     assignments: { type: [assignmentSchema] },

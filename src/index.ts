@@ -45,11 +45,12 @@ import clubQuizRoutes from './routes/New_Routes/club_routes/clubQuiz.routes.js';
 import clubQuizAttemptRoutes from './routes/New_Routes/club_routes/clubQuizAttempt.routes.js';
 import PendingTaskRoutes from './routes/New_Routes/pendingTask_routes/pendingTask.routes.js';
 import CalendarRoutes from './routes/New_Routes/academicCalendar_routes/academicCaledar.routes.js';
-import markReportRoutes from './routes/New_Routes/markReportCard_routes/markReportCard.routes.js';
 import connectDB from './config/connectDB.js';
 import type { RoleBasedRequest } from './utils/types.js';
 import { initSocket } from './config/socket.js';
 import markReportConfigRoutes from './routes/New_Routes/markReportCard_routes/markReportCofig.routes.js';
+import markReportRoutesV1 from './routes/New_Routes/markReportCard_routes/markReportCardv1.routes.js';
+import markReportRoutes from './routes/New_Routes/markReportCard_routes/markReportCard.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -94,7 +95,8 @@ app.use('/api/club', clubRoutes);
 app.use('/api/club/quiz/attempt', clubQuizAttemptRoutes)
 app.use('/api/club/quiz', clubQuizRoutes)
 
-app.use('/api/markreport', markReportRoutes)
+app.use('/api/markreport',markReportRoutes)
+app.use('/api/markreport/v1', markReportRoutesV1)
 app.use('/api/markreport/config', markReportConfigRoutes)
 
 // not mentioned in the docuemntation

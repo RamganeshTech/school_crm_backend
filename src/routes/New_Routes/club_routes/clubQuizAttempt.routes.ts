@@ -22,7 +22,6 @@ clubQuizAttemptRoutes.get('/get/:id',
     getSingleAttempt);
 
 
-// Delete Club (and cascades to delete videos)
 clubQuizAttemptRoutes.delete('/delete/:id',
     multiRoleAuth("correspondent", "administrator",),
     featureGuard("club"),

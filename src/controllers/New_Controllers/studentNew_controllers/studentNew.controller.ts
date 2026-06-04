@@ -13,6 +13,8 @@ import type { RoleBasedRequest } from "../../../utils/types.js";
 // import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import StudentProfileUpdate from "../../../models/New_Model/StudentModel/studentProfileUpdate_model/studentProfileUpdate.model.js";
+import mongoose, { Types } from "mongoose";
 
 // ==========================================
 export const createStudentProfile = async (req: RoleBasedRequest, res: Response) => {
@@ -22,7 +24,7 @@ export const createStudentProfile = async (req: RoleBasedRequest, res: Response)
             studentName,
             gender,
             dob,
-            whatsappNumber,
+            mobileNumber,
             newOld,
             //   mandatory, 
             //   nonMandatory 
@@ -79,13 +81,20 @@ export const createStudentProfile = async (req: RoleBasedRequest, res: Response)
             studentName,
             gender: gender || null,
             dob: dob || null,
-            whatsappNumber: whatsappNumber || null,
+            mobileNumber: mobileNumber || null,
             studentImage: uploadedImage,
             newOld: newOld || null,
 
             // Since these are objects in schema, we pass them directly
             // If frontend sends nothing, they default to empty objects per schema
-            mandatory: mandatoryData || {},
+            // mandatory: mandatoryData || {},
+            mandatory: {
+                ...mandatoryData, // keep other mandatory fields
+
+                gender: gender || null,
+                dob: dob || null,
+                mobileNumber: mobileNumber || null,
+            },
             nonMandatory: nonMandatoryData || {},
 
             // Defaulting cache IDs to null initially
@@ -373,12 +382,12 @@ export const getAllStudents = async (req: RoleBasedRequest, res: Response) => {
             return res.status(400).json({ ok: false, message: "schoolId is required" });
         }
 
-        if(academicYear){
-            
+        if (academicYear) {
+
         }
 
         // Build Filter
-        const filter:any = { schoolId };
+        const filter: any = { schoolId };
 
         if (classId) filter.currentClassId = classId;
         if (sectionId) filter.currentSectionId = sectionId;
@@ -442,7 +451,7 @@ export const getAllStudentsWithoutPaginationV1 = async (req: RoleBasedRequest, r
         }
 
         // Build Filter
-        const filter:any = { schoolId };
+        const filter: any = { schoolId };
 
         if (classId) filter.currentClassId = classId;
         if (sectionId) filter.currentSectionId = sectionId;
@@ -467,7 +476,7 @@ export const getAllStudentsWithoutPaginationV1 = async (req: RoleBasedRequest, r
         return res.status(200).json({
             ok: true,
             data: students,
-            message : "fetched studnets"
+            message: "fetched studnets"
         });
 
     } catch (error: any) {
@@ -588,5 +597,213 @@ export const removeStudentFromParent = async (req: RoleBasedRequest, res: Respon
     } catch (error: any) {
         console.error("Remove Student Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
+    }
+};
+
+
+
+// CONTROLLER FOR THE STUDENT UPDATE PROFILE REQUEST BY PARENT
+
+// ==========================================
+// 1. SUBMIT UPDATE REQUEST (Parent)
+// ==========================================
+export const submitProfileUpdateRequest = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { studentId, schoolId, changes, previousValues, section } = req.body;
+        const requestedBy = req.user!._id;
+
+        if (!studentId || !schoolId || !changes || Object.keys(changes).length === 0) {
+            return res.status(400).json({ ok: false, message: "Missing required fields or empty changes." });
+        }
+
+        // let existingRequest = await StudentProfileUpdate.findOne({
+        //     studentId,
+        //     schoolId,
+        //     status: "pending"
+        // });
+
+        // if (existingRequest) {
+        //     // 🌟 CORRECT MAP SYNTAX: Iterate plain payload objects, mutate database Maps using .set()
+
+
+        //     // 🌟 2. Ensure the previousValues Map is initialized if it doesn't exist yet
+        //     if (!existingRequest.changes) {
+        //         existingRequest.changes = new Map();
+        //     }
+
+        //     for (const [key, value] of Object.entries(changes)) {
+        //         existingRequest.changes.set(key, String(value));
+        //     }
+
+        //     // 🌟 2. Ensure the previousValues Map is initialized if it doesn't exist yet
+        //     if (!existingRequest.previousValues) {
+        //         existingRequest.previousValues = new Map();
+        //     }
+        //     for (const [key, value] of Object.entries(previousValues || {})) {
+        //         existingRequest.previousValues.set(key, String(value));
+        //     }
+
+
+        //     // 🌟 1. Ensure the section Map is initialized if it doesn't exist yet
+        //     if (!existingRequest.section) {
+        //         existingRequest.section = new Map();
+        //     }
+
+        //     for (const [key, value] of Object.entries(section || {})) {
+        //         existingRequest.section.set(key, String(value));
+        //     }
+
+        //     // Maps automatically track internal modifications; no markModified required.
+        //     await existingRequest.save();
+
+        //     return res.status(200).json({
+        //         ok: true,
+        //         message: "Update request updated and merged successfully.",
+        //         data: existingRequest
+        //     });
+        // }
+
+        // On instantiation, Mongoose automatically transforms plain JSON objects into schema Maps!
+        const newRequest = new StudentProfileUpdate({
+            studentId,
+            schoolId,
+            requestedBy,
+            changes,
+            previousValues,
+            section,
+            status: "pending"
+        });
+
+        await newRequest.save();
+        return res.status(201).json({ ok: true, message: "Update request submitted.", data: newRequest });
+
+    } catch (error: any) {
+        console.error("Submit Update Request Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error",error:error?.message });
+    }
+};
+
+// ==========================================
+// 2. GET PENDING REQUESTS FOR A STUDENT (Parent)
+// ==========================================
+export const getPendingRequestsForStudent = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { studentId } = req.query;
+
+        if (!studentId) {
+            return res.status(400).json({ ok: false, message: "studentId is required." });
+        }
+
+        const requests = await StudentProfileUpdate.find({
+            studentId,
+            status: "pending"
+        }).sort({ createdAt: -1 });
+
+        return res.status(200).json({ ok: true, data: requests });
+    } catch (error: any) {
+        console.error("Get Student Requests Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error", error:error?.message });
+    }
+};
+
+// ==========================================
+// 3. GET ALL PENDING REQUESTS FOR SCHOOL (Admin)
+// ==========================================
+export const getAllPendingRequests = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const schoolId = req.user?.schoolId || req.query.schoolId;
+        const status = req.query.status || "pending";
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required." });
+        }
+
+        const requests = await StudentProfileUpdate.find({ schoolId, status })
+            .populate("studentId", "studentName srId currentClassId")
+            .populate("requestedBy", "userName role")
+            .sort({ createdAt: 1 });
+
+        return res.status(200).json({ ok: true, data: requests });
+    } catch (error: any) {
+        console.error("Get All Pending Requests Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error" , error:error?.message});
+    }
+};
+
+// ==========================================
+// 4. REVIEW REQUEST (Admin Approve/Reject)
+// ==========================================
+export const reviewProfileUpdateRequest = async (req: RoleBasedRequest, res: Response) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { requestId } = req.params;
+        const { action, reviewNote } = req.body;
+        const reviewedBy = req.user!._id;
+
+        if (!["approved", "rejected"].includes(action)) {
+            return res.status(400).json({ ok: false, message: "Invalid action. Must be 'approved' or 'rejected'." });
+        }
+
+        const requestDoc = await StudentProfileUpdate.findById(requestId).session(session);
+
+        if (!requestDoc) throw new Error("Request not found.");
+        if (requestDoc.status !== "pending") throw new Error(`Action denied. Request is already ${requestDoc.status}.`);
+
+        if (action === "rejected") {
+            requestDoc.status = "rejected";
+            requestDoc.reviewNote = reviewNote || "";
+            requestDoc.reviewedBy = new Types.ObjectId(reviewedBy); // Cast string securely to ObjectId
+            await requestDoc.save({ session });
+
+            await session.commitTransaction();
+            session.endSession();
+            return res.status(200).json({ ok: true, message: "Update request rejected successfully." });
+        }
+
+        // --- APPROVAL LOGIC ---
+        const studentDoc: any = await StudentNewModel.findById(requestDoc.studentId).session(session);
+        if (!studentDoc) throw new Error("Student document not found.");
+
+        // 🌟 CORRECT MAP SYNTAX: Use .entries() to loop map models securely
+        if (requestDoc?.changes) {
+            for (const [key, newValue] of requestDoc.changes.entries()) {
+                // 🌟 CORRECT MAP SYNTAX: Use .get() to lookup matching map section values
+                const sectionType = requestDoc.section?.get(key);
+
+                if (sectionType === "mandatory") {
+                    if (!studentDoc.mandatory) studentDoc.mandatory = {};
+                    studentDoc.mandatory[key] = newValue;
+                } else {
+                    if (!studentDoc.nonMandatory) studentDoc.nonMandatory = {};
+                    studentDoc.nonMandatory[key] = newValue;
+                }
+            }
+        }
+
+        studentDoc.markModified('mandatory');
+        studentDoc.markModified('nonMandatory');
+        await studentDoc.save({ session });
+
+        // Update verification request ledger document
+        requestDoc.status = "approved";
+        requestDoc.reviewNote = reviewNote || "Verified and approved.";
+        requestDoc.reviewedBy = new Types.ObjectId(reviewedBy); // Cast string securely to ObjectId
+        await requestDoc.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.status(200).json({
+            ok: true,
+            message: "Profile updated and request approved successfully."
+        });
+
+    } catch (error: any) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Review Request Error:", error);
+        return res.status(500).json({ ok: false, message: error.message || "Internal server error" , error:error?.message });
     }
 };

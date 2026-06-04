@@ -1,5 +1,5 @@
 import express from "express";
-import { getAttendanceSheet, getClassAttendanceHistory, getStudentAttendanceHistory, markAttendance } from "../../../controllers/New_Controllers/attendance_controller/attendance.controller.js";
+import { getAcademicYearLeaderboards, getAttendanceSheet, getClassAttendanceHistory, getClassAttendanceReport, getStudentAttendanceHistory, markAttendance } from "../../../controllers/New_Controllers/attendance_controller/attendance.controller.js";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 import { featureGuard } from "../../../middleware/featureGuard.js";
 // import { 
@@ -49,5 +49,26 @@ attendanceRoutes.get(
   featureGuard("attendance"),
   getStudentAttendanceHistory
 );
+
+
+attendanceRoutes.get(
+  "/report/class",
+  // Add your auth middleware here (ensure user is parent of this student)
+  multiRoleAuth("administrator", "accountant", "correspondent", "principal", "viceprincipal", "teacher", "parent"),
+  featureGuard("attendance"),
+  getClassAttendanceReport
+);
+
+
+attendanceRoutes.get(
+  "/report/leaderboard",
+  // Add your auth middleware here (ensure user is parent of this student)
+  multiRoleAuth("administrator", "accountant", "correspondent", "principal", "viceprincipal", "teacher", "parent"),
+  featureGuard("attendance"),
+  getAcademicYearLeaderboards
+);
+
+
+
 
 export default attendanceRoutes;

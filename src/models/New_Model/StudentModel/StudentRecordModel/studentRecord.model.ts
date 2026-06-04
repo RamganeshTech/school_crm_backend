@@ -60,13 +60,13 @@ export interface IStudentRecord extends Document {
 }
 
 
-const uploadSchema = new Schema<IRecordUpload>({
-    type: { type: String, enum: ["image", "pdf"] },
-    key: { type: String, },
-    url: { type: String, },
-    originalName: String,
-    uploadedAt: { type: Date, default: new Date() }
-});
+    const uploadSchema = new Schema<IRecordUpload>({
+        type: { type: String, enum: ["image", "pdf"] },
+        key: { type: String, },
+        url: { type: String, },
+        originalName: String,
+        uploadedAt: { type: Date, default: new Date() }
+    });
 
 
 

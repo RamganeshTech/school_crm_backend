@@ -1,5 +1,5 @@
 import express from "express";
-import { assignStudentToParent, createStudentProfile, deleteStudent, getAllStudents, getAllStudentsWithoutPaginationV1, getStudentById, removeStudentFromParent, updateStudent } from "../../../controllers/New_Controllers/studentNew_controllers/studentNew.controller.js";
+import { assignStudentToParent, createStudentProfile, deleteStudent, getAllPendingRequests, getAllStudents, getAllStudentsWithoutPaginationV1, getPendingRequestsForStudent, getStudentById, removeStudentFromParent, reviewProfileUpdateRequest, submitProfileUpdateRequest, updateStudent } from "../../../controllers/New_Controllers/studentNew_controllers/studentNew.controller.js";
 // import { upload } from "../../../Utils/s3upload.js";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 import { upload } from "../../../utils/s4UploadsNew.js";
@@ -68,7 +68,7 @@ studentRoutes.get(
 
 
 
-studentRoutes.put( 
+studentRoutes.put(
   "/assignstudent",
   multiRoleAuth("correspondent", "administrator"),
   featureGuard("studentRecord"),
@@ -84,5 +84,46 @@ studentRoutes.put(
   removeStudentFromParent
 );
 
+
+
+
+// ROUTES FOR THE STUDENT UPDATE PROFILE REQUEST BY PARENT
+
+
+// --- PARENT FACING ROUTES ---
+
+// Submit a profile update request
+studentRoutes.post(
+  "/request-update",
+  multiRoleAuth("parent"), // Add whatever role represents parents in your system
+  featureGuard("studentRecord"), // Optional based on your preference
+  submitProfileUpdateRequest
+);
+
+// Get pending requests for a specific student
+studentRoutes.get(
+  "/pending-requests",
+  multiRoleAuth("parent", "correspondent", "administrator", "principal"),
+  featureGuard("studentRecord"),
+  getPendingRequestsForStudent
+);
+
+// --- ADMIN FACING ROUTES ---
+
+// Get all pending requests for the school queue
+studentRoutes.get(
+  "/all-pending",
+  multiRoleAuth("correspondent", "administrator", "principal"),
+  featureGuard("studentRecord"),
+  getAllPendingRequests
+);
+
+// Approve or Reject a specific request
+studentRoutes.put(
+  "/review-request/:requestId",
+  multiRoleAuth("correspondent", "administrator", "principal"),
+  featureGuard("studentRecord"),
+  reviewProfileUpdateRequest  
+);
 
 export default studentRoutes;

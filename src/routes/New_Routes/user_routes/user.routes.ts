@@ -1,5 +1,5 @@
 import express from 'express'
-import { assignRolesToUser, createUser, deleteUser, isAuthenticated, loginUser, logoutUser, updateUser, getParentStudents, createUserV1 } from '../../../controllers/New_Controllers/user_contorllers/user.controllers.js';
+import { assignRolesToUser, createUser, deleteUser, isAuthenticated, loginUser, logoutUser, updateUser, getParentStudents, createUserV1, requestPasswordReset, resetPassword } from '../../../controllers/New_Controllers/user_contorllers/user.controllers.js';
 import { multiRoleAuth } from '../../../middleware/multiRoleRequest.js';
 import { getSingleUser, getUsersBySchool } from '../../../controllers/New_Controllers/user_contorllers/userUtil.controller.js';
 
@@ -52,6 +52,8 @@ userRoutes.get(
 );
 
 
+userRoutes.post("/forgot-password", requestPasswordReset);
+userRoutes.post("/reset-password/:id/:token", resetPassword);
 
 
 

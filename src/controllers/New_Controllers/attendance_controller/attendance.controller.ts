@@ -341,7 +341,7 @@ export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Re
         };
 
         if (academicYear) {
-            query.academicYear= academicYear
+            query.academicYear = academicYear
         }
 
         // 3. Fetch Data
@@ -391,5 +391,365 @@ export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Re
     } catch (error: any) {
         console.error("Get Student Attendance Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error", error: error?.message });
+    }
+};
+
+
+
+// REPORT 
+
+// Define a clear interface for your mapping
+interface AttendanceKpi {
+    present: number;
+    absent: number;
+    late: number;
+    "half-day": number;
+}
+
+export const getClassAttendanceReport = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        let { schoolId, academicYear, classId, sectionId, startDate, endDate } = req.query;
+
+        // 1. Input Validation
+        if (!schoolId || !classId || !startDate || !endDate) {
+            return res.status(400).json({
+                ok: false,
+                message: "schoolId, classId, startDate, and endDate are required."
+            });
+        }
+
+        // 1. DETERMINE ACADEMIC YEAR
+        if (!academicYear) {
+            const s = await SchoolModel.findById(schoolId);
+            academicYear = s!.currentAcademicYear;
+        }
+
+
+        if (!academicYear) {
+            return res.status(400).json({
+                ok: false,
+                message: "academic Year is required or set in the school configuration."
+            });
+        }
+
+
+        // 2. Build the Match Stage
+        const matchStage: any = {
+            schoolId: new mongoose.Types.ObjectId(schoolId as string),
+            academicYear: academicYear as string,
+            classId: new mongoose.Types.ObjectId(classId as string),
+            date: {
+                $gte: new Date(startDate as string),
+                $lte: new Date(endDate as string)
+            }
+        };
+
+        // Conditionally add sectionId if provided (allows viewing whole class OR specific section)
+        if (sectionId) {
+            matchStage.sectionId = new mongoose.Types.ObjectId(sectionId as string);
+        }
+
+        // 3. The Power of $facet: Multiple Reports in One Query
+        const reportData = await AttendanceModel.aggregate([
+            // Step A: Filter down to the specific class and date range
+            { $match: matchStage },
+
+            // Step B: Unwind the records array so each student's status becomes a top-level document
+            { $unwind: "$records" },
+
+            // Step C: Run parallel aggregations
+            {
+                $facet: {
+                    // --- PIPELINE 1: Overall KPIs (For Dashboard Top Cards & Donut Chart) ---
+                    kpiSummary: [
+                        {
+                            $group: {
+                                _id: "$records.status",
+                                count: { $sum: 1 }
+                            }
+                        }
+                    ],
+
+                    // --- PIPELINE 2: Timeline Data (For Bar/Line Charts) ---
+                    timeline: [
+                        {
+                            $group: {
+                                _id: {
+                                    date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                                    status: "$records.status"
+                                },
+                                count: { $sum: 1 }
+                            }
+                        },
+                        {
+                            // Group again by date to format it beautifully for frontend charts
+                            $group: {
+                                _id: "$_id.date",
+                                statuses: {
+                                    $push: { k: "$_id.status", v: "$count" }
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                date: "$_id",
+                                data: { $arrayToObject: "$statuses" },
+                                _id: 0
+                            }
+                        },
+                        { $sort: { date: 1 } } // Chronological order
+                    ],
+
+                    // --- PIPELINE 3: ADVANCED - At-Risk Students (Chronic Absentees) ---
+                    chronicAbsentees: [
+                        { $match: { "records.status": "absent" } },
+                        {
+                            $group: {
+                                _id: "$records.studentId",
+                                // studentName: { $first: "$records.studentName" },
+                                // rollNumber: { $first: "$records.rollNumber" },
+
+                                // 🌟 FIX: Changed $first to $max. This completely ignores the old 'null' records!
+                                studentName: { $max: "$records.studentName" },
+                                rollNumber: { $max: "$records.rollNumber" },
+                                totalAbsences: { $sum: 1 }
+                            }
+                        },
+                        { $sort: { totalAbsences: -1 } },
+                        { $limit: 5 } // Top 5 students who need attention
+                    ]
+                }
+            }
+        ]);
+
+        // 4. Data Transformation & Percentage Calculation (Post-Processing)
+        const result = reportData[0];
+
+        // Calculate percentages safely in Node.js to keep DB load light
+        let totalRecords = 0;
+        // const kpiMap: Record<string, number> = { present: 0, absent: 0, late: 0, "half-day": 0 };
+        const kpiMap: AttendanceKpi = { present: 0, absent: 0, late: 0, "half-day": 0 };
+
+        result.kpiSummary.forEach((kpi: any) => {
+            // Check if the ID from Mongo exists in our predefined map keys
+            if (kpi._id in kpiMap) {
+                kpiMap[kpi._id as keyof AttendanceKpi] = kpi.count;
+            }
+            totalRecords += kpi.count;
+        });
+
+
+
+        // EG: SCENARIO FOR THIS 
+
+        // 3. Real-World Example
+
+        // Imagine a class of 10 students over a 2 - day period (20  total records).
+
+        // 15 times students were present the whole day.
+        // 4 times students took a half-day.
+        // 1 time a student was entirely absent.
+
+        // Standard Calculation:If half-days are counted as present:
+
+        // Rate = (15 + 4)/20 * 100 =95.00%
+
+        // This Formula's Calculation
+        // Effective Present Count = 15 + (4 * 0.5) = 17
+
+        // $$$$\text{Effective Attendance Rate} = 17/20 * 100 = 85.00%
+
+        // Advanced Metric: Effective Attendance Rate (Half-day counts as 0.5)
+        const effectivePresentCount = kpiMap.present + (kpiMap["half-day"] * 0.5);
+        const effectiveAttendanceRate = totalRecords > 0
+            ? ((effectivePresentCount / totalRecords) * 100).toFixed(2)
+            : 0;
+
+        const finalReport = {
+            overview: {
+                totalWorkingDays: result.timeline.length,
+                totalStudentRecordsEvaluated: totalRecords,
+                effectiveAttendanceRate: `${effectiveAttendanceRate}%`,
+                distribution: {
+                    present: kpiMap.present,
+                    absent: kpiMap.absent,
+                    late: kpiMap.late,
+                    halfDay: kpiMap["half-day"]
+                },
+                percentages: {
+                    present: totalRecords > 0 ? ((kpiMap.present / totalRecords) * 100).toFixed(1) + "%" : "0%",
+                    absent: totalRecords > 0 ? ((kpiMap.absent / totalRecords) * 100).toFixed(1) + "%" : "0%",
+                }
+            },
+            chartData: result.timeline,
+            atRiskStudents: result.chronicAbsentees
+        };
+
+        res.status(200).json({
+            ok: true,
+            message: "Attendance report generated successfully",
+            data: finalReport
+        });
+
+    } catch (error: any) {
+        console.error("Attendance Report Aggregation Error:", error);
+        res.status(500).json({ ok: false, message: "Failed to generate report", error: error.message });
+    }
+};
+
+
+export const getAcademicYearLeaderboards = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { schoolId, academicYear, classId, sectionId } = req.query;
+
+        // 1. Core Validation
+        if (!schoolId || !academicYear) {
+            return res.status(400).json({
+                ok: false,
+                message: "schoolId and academicYear are strictly required for yearly leaderboards."
+            });
+        }
+
+        // 2. Dynamic Match Stage (The Context Switcher)
+        const matchStage: any = {
+            schoolId: new mongoose.Types.ObjectId(schoolId as string),
+            academicYear: academicYear as string,
+        };
+
+        if (classId) matchStage.classId = new mongoose.Types.ObjectId(classId as string);
+        if (sectionId) matchStage.sectionId = new mongoose.Types.ObjectId(sectionId as string);
+
+        // 3. The Aggregation Pipeline
+        const reportData = await AttendanceModel.aggregate([
+            // Step A: Filter down to the target context
+            { $match: matchStage },
+
+            // Step B: Flatten the data so we can evaluate individual students
+            { $unwind: "$records" },
+
+            // Step C: Group all historical records by individual student
+            {
+                $group: {
+                    _id: "$records.studentId",
+                    studentName: { $max: "$records.studentName" },
+                    rollNumber: { $max: "$records.rollNumber" },
+                    classId: { $first: "$classId" },
+                    sectionId: { $first: "$sectionId" },
+                    
+                    presentCount: { $sum: { $cond: [{ $eq: ["$records.status", "present"] }, 1, 0] } },
+                    absentCount: { $sum: { $cond: [{ $eq: ["$records.status", "absent"] }, 1, 0] } },
+                    lateCount: { $sum: { $cond: [{ $eq: ["$records.status", "late"] }, 1, 0] } },
+                    halfDayCount: { $sum: { $cond: [{ $eq: ["$records.status", "half-day"] }, 1, 0] } },
+                    totalDaysEvaluated: { $sum: 1 } 
+                }
+            },
+
+            // 🌟 NEW: Step C.1 - Lookup the Class Name
+            {
+                $lookup: {
+                    from: "classmodels", // IMPORTANT: Check your MongoDB compass. If your collection is named differently (e.g. 'classes'), change this string.
+                    localField: "classId",
+                    foreignField: "_id",
+                    as: "classData"
+                }
+            },
+
+            // 🌟 NEW: Step C.2 - Lookup the Section Name
+            {
+                $lookup: {
+                    from: "sectionmodels", // IMPORTANT: Verify this collection name in your DB too.
+                    localField: "sectionId",
+                    foreignField: "_id",
+                    as: "sectionData"
+                }
+            },
+
+            // 🌟 NEW: Step C.3 - Extract the 'name' string from the lookup arrays
+            {
+                $addFields: {
+                    className: { $arrayElemAt: ["$classData.name", 0] },
+                    sectionName: { $arrayElemAt: ["$sectionData.name", 0] }
+                }
+            },
+
+            // Step D: Calculate the "Effective Attendance" metric
+            {
+                $addFields: {
+                    effectivePresent: { 
+                        $add: [
+                            "$presentCount", 
+                            { $multiply: ["$halfDayCount", 0.5] } 
+                        ] 
+                    }
+                }
+            },
+
+            // Step E: Calculate Percentage safely
+            {
+                $addFields: {
+                    attendancePercentage: {
+                        $cond: [
+                            { $gt: ["$totalDaysEvaluated", 0] },
+                            { $multiply: [{ $divide: ["$effectivePresent", "$totalDaysEvaluated"] }, 100] },
+                            0
+                        ]
+                    }
+                }
+            },
+
+            // Step F: Round the percentage to 2 decimal places natively in MongoDB
+            {
+                $addFields: {
+                    attendancePercentage: { $round: ["$attendancePercentage", 2] }
+                }
+            },
+
+            // Step G: Clean up the payload before sorting (Removes the bulky lookup arrays)
+            {
+                $project: {
+                    classData: 0,
+                    sectionData: 0
+                }
+            },
+
+            // Step H: The Facet Stage - Spawn 4 parallel pipelines to rank the students
+            {
+                $facet: {
+                    topAttendance: [
+                        { $sort: { attendancePercentage: -1, totalDaysEvaluated: -1 } },
+                        { $limit: 10 }
+                    ],
+                    lowestAttendance: [
+                        { $match: { totalDaysEvaluated: { $gt: 0 } } },
+                        { $sort: { attendancePercentage: 1, absentCount: -1 } },
+                        { $limit: 10 }
+                    ],
+                    mostLate: [
+                        { $match: { lateCount: { $gt: 0 } } }, 
+                        { $sort: { lateCount: -1, attendancePercentage: 1 } },
+                        { $limit: 10 }
+                    ],
+                    mostHalfDays: [
+                        { $match: { halfDayCount: { $gt: 0 } } }, 
+                        { $sort: { halfDayCount: -1 } },
+                        { $limit: 10 }
+                    ]
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            ok: true,
+            message: "Yearly leaderboards generated successfully",
+            data: reportData[0]
+        });
+
+    } catch (error: any) {
+        console.error("Yearly Attendance Leaderboard Error:", error);
+        res.status(500).json({ 
+            ok: false, 
+            message: "Failed to generate leaderboards", 
+            error: error.message 
+        });
     }
 };

@@ -26,21 +26,22 @@ expenseRoutes.post(
 
 
 expenseRoutes.get("/getall",
-  multiRoleAuth("correspondent", "accountant", "principal"),
+  multiRoleAuth("correspondent", "accountant", "principal", "viceprincipal"),
   featureGuard("expense"), getAllExpenses);
 expenseRoutes.get("/get/:id",
-  multiRoleAuth("correspondent", "accountant", "principal"),
+  multiRoleAuth("correspondent", "accountant", "principal", "viceprincipal"),
   featureGuard("expense"), getExpenseById);
 
 
   expenseRoutes.get("/v1/report",
-  multiRoleAuth("correspondent", "accountant", "principal"),
+  multiRoleAuth("correspondent", "accountant", "principal", "viceprincipal", "administrator"),
   featureGuard("expense"), getExpenseReport );
 
 
 expenseRoutes.delete("/delete/:id",
   multiRoleAuth("correspondent"),
   featureGuard("expense"), deleteExpense);
+
 expenseRoutes.delete("/deleteproof",
   multiRoleAuth("correspondent"),
   featureGuard("expense"), deleteProof);

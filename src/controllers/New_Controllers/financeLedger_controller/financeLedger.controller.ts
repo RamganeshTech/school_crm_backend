@@ -432,6 +432,99 @@ export const getFinanceTimeline = async (req: RoleBasedRequest, res: Response) =
     }
 };
 
+
+// controllers/financeController.ts (or wherever this lives)
+export const getFinanceTimelinev1 = async (req: any, res: any) => {
+    try {
+        const { schoolId, range, startDate, endDate, section } = req.query;
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        // 1. Dynamic Date & Grouping Logic
+        let start = new Date();
+        let end = new Date();
+        let format = "%Y-%m-%d"; // Default grouping: By Day
+
+        switch (range) {
+            case '30d':
+                start.setDate(end.getDate() - 30);
+                break;
+            case 'year':
+                start = new Date(end.getFullYear(), 0, 1);
+                format = "%Y-%m"; // Group by Month
+                break;
+            case 'all':
+                start = new Date(2000, 0, 1); // Far past to catch everything
+                format = "%Y-%m"; // Group by Month
+                break;
+            case 'custom':
+                if (startDate && endDate) {
+                    start = new Date(startDate);
+                    end = new Date(endDate);
+                    end.setHours(23, 59, 59, 999); // Include the whole end day
+                    
+                    // Smart grouping: If custom range is > 90 days, group by month for a cleaner chart
+                    const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diffDays > 90) format = "%Y-%m";
+                }
+                break;
+            case 'month':
+            default:
+                start = new Date(end.getFullYear(), end.getMonth(), 1);
+                break;
+        }
+
+        // 2. Build the Query
+        const query: any = {
+            schoolId: new mongoose.Types.ObjectId(schoolId),
+            status: "active",
+            date: { $gte: start, $lte: end }
+        };
+
+        if (section) query.section = section;
+
+        // 3. Aggregate Data
+        const timeline = await FinanceLedgerModel.aggregate([
+            { $match: query },
+            {
+                $group: {
+                    _id: {
+                        dateLabel: { $dateToString: { format: format, date: "$date" } },
+                        type: "$transactionType"
+                    },
+                    total: { $sum: "$amount" }
+                }
+            },
+            { $sort: { "_id.dateLabel": 1 } }
+        ]);
+
+        // 4. Format for Chart.js
+        const formattedData: Record<string, { date: string, income: number, expense: number }> = {};
+
+        timeline.forEach(item => {
+            const date = item._id.dateLabel;
+            const type = item._id.type;
+            const amount = item.total;
+
+            if (!formattedData[date]) {
+                formattedData[date] = { date, income: 0, expense: 0 };
+            }
+
+            if (type === "CREDIT") formattedData[date].income = amount;
+            if (type === "DEBIT") formattedData[date].expense = amount;
+        });
+
+        res.status(200).json({
+            ok: true,
+            data: Object.values(formattedData)
+        });
+
+    } catch (error: any) {
+        res.status(500).json({ ok: false, message: "Error fetching timeline" });
+    }
+};
 // ==========================================
 // 3. OUTSTANDING FEES API (Total Due)
 // ==========================================
@@ -497,5 +590,128 @@ export const getOutstandingStats = async (req: RoleBasedRequest, res: Response) 
     } catch (error: any) {
         console.error("Outstanding Error:", error);
         res.status(500).json({ message: "Error fetching outstanding fees" , ok:false});
+    }
+};
+
+
+
+export const getCollectedFeesStats = async (req: any, res: any) => {
+    try {
+        const { schoolId, academicYear } = req.query;
+
+        if (!schoolId || !academicYear) {
+            return res.status(400).json({ ok: false, message: "schoolId and academicYear are required" });
+        }
+
+        const query = {
+            schoolId: new mongoose.Types.ObjectId(schoolId),
+            isActive: true,
+            academicYear: academicYear
+        };
+
+        // Aggregate PAID amounts from Student Records
+        const stats = await StudentRecordModel.aggregate([
+            { $match: query },
+            {
+                $group: {
+                    _id: null,
+                    // ⚠️ CHANGE THESE TO MATCH YOUR ACTUAL DATABASE FIELDS FOR PAID MONEY
+                    totalAdmissionPaid: { $sum: "$feePaid.admissionFee" },
+                    totalTerm1Paid: { $sum: "$feePaid.firstTermAmt" },
+                    totalTerm2Paid: { $sum: "$feePaid.secondTermAmt" },
+                    totalBusPaid: { $sum: { $add: ["$feePaid.busFirstTermAmt", "$feePaid.busSecondTermAmt"] } }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    totalCollected: {
+                        $add: [
+                            "$totalAdmissionPaid",
+                            "$totalTerm1Paid",
+                            "$totalTerm2Paid",
+                            "$totalBusPaid"
+                        ]
+                    },
+                    breakdown: {
+                        Admission: "$totalAdmissionPaid",
+                        "Term 1": "$totalTerm1Paid",
+                        "Term 2": "$totalTerm2Paid",
+                        Transport: "$totalBusPaid"
+                    }
+                }
+            }
+        ]);
+
+        const result = stats[0] || { totalCollected: 0, breakdown: {} };
+
+        res.status(200).json({ ok: true, data: result });
+
+    } catch (error: any) {
+        console.error("Collected Fees Error:", error);
+        res.status(500).json({ ok: false, message: "Error fetching collected fees" });
+    }
+};
+
+
+// Assuming you have FinanceLedgerModel imported here!
+
+export const getRecentFeeActivity = async (req: any, res: any) => {
+    try {
+        const { schoolId } = req.query;
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        // Fetch the 6 most recent CREDIT transactions
+        const recentActivity = await FinanceLedgerModel.find({
+            schoolId: new mongoose.Types.ObjectId(schoolId),
+            transactionType: "CREDIT", // Only show money coming IN
+            status: "active"
+        })
+        .sort({ date: -1, createdAt: -1 }) // Sort by newest first
+        .limit(10)
+        .populate({
+            path: 'studentRecordId',
+            select: 'studentName className sectionName' // Only grab what we need
+        })
+        .lean();
+
+        // Format the data for the frontend
+        const formattedActivity = recentActivity.map((tx: any) => {
+            // Extract the populated student data safely
+            const student = tx.studentRecordId;
+            
+            // Build a nice display title: "Rahul Kumar" or fallback to Category
+            const displayTitle = student?.studentName 
+                ? student.studentName 
+                : (tx.category || "Fee Collection");
+
+            // Build a nice description: "Class 10-A • UPI"
+            let classInfo = "";
+            if (student?.className) {
+                classInfo = `Class ${student.className}`;
+                if (student.sectionName) classInfo += `-${student.sectionName}`;
+            }
+            
+            const mode = tx.paymentMode || "System";
+            const description = classInfo ? `${classInfo} • ${mode}` : mode;
+
+            return {
+                id: tx._id,
+                title: displayTitle,
+                amount: tx.amount,
+                date: tx.date || tx.createdAt,
+                description: description,
+                category: tx.category // Helpful if you want to show "Term 1" anywhere
+            };
+        });
+
+        res.status(200).json({ ok: true, data: formattedActivity });
+
+    } catch (error: any) {
+        console.error("Recent Activity Error:", error);
+        res.status(500).json({ ok: false, message: "Error fetching recent activity" });
     }
 };

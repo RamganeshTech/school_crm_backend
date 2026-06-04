@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import StudentNewModel from "../../../models/New_Model/StudentModel/studentNew.model.js";
 import StudentRecordModel from "../../../models/New_Model/StudentModel/StudentRecordModel/studentRecord.model.js";
 import FeeTransactionModel from "../../../models/New_Model/FeeTransactionReceipt_model/feeTransactionReceipt.model.js";
@@ -740,6 +740,8 @@ export const revertFeeTransaction = async (req: RoleBasedRequest, res: Response)
 };
 
 
+
+// apply  concession wont reduce the feestructure amounts, it wil be handled by the colletfeeand amnage record thigns only 
 export const applyConcession = async (req: RoleBasedRequest, res: Response) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -919,6 +921,7 @@ export const applyConcession = async (req: RoleBasedRequest, res: Response) => {
             inAmount = discountAmount
 
         }
+
 
         const newDues = {
             admissionDues: 0,
@@ -1182,6 +1185,92 @@ export const uploadConcessionProof = async (req: RoleBasedRequest, res: Response
     }
 };
 
+export const approveStudentRecordConcession = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        // Assuming you pass the specific record ID in the URL params
+        const { studentId } = req.params;
+        const { academicYear } = req.query
+        const approverId = req.user?._id; // Extracted from your auth middleware
+        const approverRole = req.user!.role;
+
+        if (!studentId || studentId === "null") {
+            return res.status(400).json({ ok: false, message: "Record ID is required." });
+        }
+
+        if (!academicYear) {
+            return res.status(400).json({ ok: false, message: "academicYear are required." });
+        }
+
+        const query = {
+            studentId,
+            academicYear
+        }
+
+        // 1. Fetch the Record
+        const studentRecord = await StudentRecordModel.findOne(query);
+
+        if (!studentRecord) {
+            return res.status(404).json({ ok: false, message: "Student Record not found." });
+        }
+
+        // 2. VALIDATION: Is the record active?
+        if (studentRecord.isActive === false) {
+            return res.status(400).json({
+                ok: false,
+                message: "Cannot approve concession: This student record is currently inactive."
+            });
+        }
+
+        // 3. VALIDATION: Does a concession actually exist to approve?
+        if (!studentRecord.concession || !studentRecord.concession.isApplied || studentRecord.concession.inAmount <= 0) {
+            return res.status(400).json({
+                ok: false,
+                message: "Cannot approve: There is no active concession amount applied to this record."
+            });
+        }
+
+        // 4. VALIDATION: Is it already approved?
+        if (studentRecord.concession.approvedBy) {
+            return res.status(400).json({
+                ok: false,
+                message: "Action Denied: This concession has already been approved."
+            });
+        }
+
+        // 5. Apply the Approval
+        // (studentRecord.concession as any)?.approvedBy = approverId;
+
+        if (studentRecord.concession) {
+            studentRecord.concession.approvedBy = new Types.ObjectId(approverId);
+        }
+
+        // Save the updated record
+        const updatedRecord = await studentRecord.save();
+
+        // 6. Log the Audit Trail (Crucial for financial actions)
+        await createAuditLog(req, {
+            action: "edit",
+            module: "student_record",
+            targetId: updatedRecord._id,
+            description: `Concession of ₹${updatedRecord.concession.inAmount} approved by ${approverRole} (${approverId})`,
+            status: "success"
+        });
+
+        // 7. Send Success Response
+        return res.status(200).json({
+            ok: true,
+            message: "Concession approved successfully.",
+            data: {
+                _id: updatedRecord._id,
+                concession: updatedRecord.concession
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Concession Approval Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
+    }
+};
 
 
 export const getAllStudentRecords = async (req: RoleBasedRequest, res: Response) => {
@@ -1761,6 +1850,86 @@ export const toggleStudentRecordStatus = async (req: RoleBasedRequest, res: Resp
 
     } catch (error: any) {
         console.error("Toggle Status Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error" });
+    }
+};
+
+
+export const toggleStudentRecordStatusV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { studentId } = req.params;
+        const { isActive, academicYear } = req.body;
+
+        const schoolId = req.user?.schoolId
+
+        // 1. Validate parameters
+        if (!studentId || studentId === "null") {
+            return res.status(400).json({
+                ok: false,
+                message: "studentId is required to update or initialize a student record."
+            });
+        }
+
+        if (isActive === undefined) {
+            return res.status(400).json({ ok: false, message: "isActive boolean is required" });
+        }
+
+        if (!academicYear) {
+            return res.status(400).json({ ok: false, message: "academicYear is required to target or upsert the correct row" });
+        }
+
+        // 2. Query, Update, and Upsert if not found
+        const updatedRecord = await StudentRecordModel.findOneAndUpdate(
+            {
+                schoolId: schoolId,
+                studentId: studentId,
+                academicYear: academicYear
+            },
+            {
+                // Fields to update regardless of whether it's a new or existing document
+                $set: { isActive: isActive },
+
+                // Fields only applied when a brand-new document is being created (Inserted)
+                $setOnInsert: {
+                    studentId: studentId,
+                    academicYear: academicYear,
+                    // Add any other core defaults your student record requires on creation here
+                    // feeStatus: "pending", 
+                    // attendancePercentage: 0
+                }
+            },
+            {
+                upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
+                new: true,                // Returns the newly updated/inserted doc
+                setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
+            }
+        );
+
+
+
+        // 3. Create security audit log tracking
+        await createAuditLog(req, {
+            action: updatedRecord.createdAt === updatedRecord.updatedAt ? "create" : "edit",
+            module: "student_record",
+            targetId: updatedRecord._id,
+            description: `Student record status initialized or updated for academic year ${academicYear} (${studentId})`,
+            status: "success"
+        });
+
+        return res.status(200).json({
+            ok: true,
+            message: `Status updated for Student Record successfully processed for year ${academicYear}`,
+            data: {
+                _id: updatedRecord._id,
+                studentId: updatedRecord.studentId,
+                academicYear: updatedRecord.academicYear,
+                isActive: updatedRecord.isActive,
+                updatedRecord: updatedRecord
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Toggle Status Upsert V1 Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error" });
     }
 };
