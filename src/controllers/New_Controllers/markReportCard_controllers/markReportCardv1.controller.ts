@@ -151,7 +151,7 @@ export const updateMarkReport = async (req: RoleBasedRequest, res: Response) => 
         if (sectionId !== undefined) updateData.sectionId = sectionId;
         if (studentId !== undefined) updateData.studentId = studentId;
         if (academicYear !== undefined) updateData.academicYear = academicYear;
-        if (markReportConfigId !== undefined) updateData.markReportConfigId = academicYear;
+        if (markReportConfigId !== undefined) updateData.markReportConfigId = markReportConfigId;
 
 
         if (subjects && Array.isArray(subjects)) updateData.subjects = subjects; // This replaces the old array with the new one
