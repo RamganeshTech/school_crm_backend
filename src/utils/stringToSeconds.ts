@@ -1,4 +1,4 @@
-const parseExpiry = (expiry) => {
+const parseExpiry = (expiry:any) => {
     const timeValue = parseInt(expiry);
     if (expiry.includes("d")) return timeValue * 86400; // Convert days to seconds
     if (expiry.includes("h")) return timeValue * 3600;  // Convert hours to seconds
