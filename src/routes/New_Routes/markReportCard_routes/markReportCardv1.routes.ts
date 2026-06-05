@@ -64,7 +64,4 @@ markReportRoutesV1.get('/get/student/:studentId',
     getMarkReportByIdV1
 );
 
-
-
-
 export default markReportRoutesV1;

@@ -44,3 +44,35 @@
 
 
 // module.exports = redisClient;
+
+import {Redis} from 'ioredis';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Create a robust instance using environment variables
+// Defaulting to localhost if the variable is missing
+const redisClient = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    retryStrategy(times: number) {
+        // Reconnect strategy: wait up to 2 seconds between attempts
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+    }
+});
+
+// Best Practice: Attach event listeners to monitor the connection lifecycle
+redisClient.on('connect', () => {
+    console.log('✅ Redis Client Connected successfully');
+});
+
+redisClient.on('error', (err) => {
+    console.error('❌ Redis Client Error:', err.message);
+});
+
+redisClient.on('reconnecting', () => {
+    console.log('🔄 Redis Client Reconnecting...');
+});
+
+export default redisClient;

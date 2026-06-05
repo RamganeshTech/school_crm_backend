@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import http from 'http';
+import './config/redisConfig.js';
 
 // const mongoose = require('mongoose');
 // const cookieParser = require('cookie-parser')

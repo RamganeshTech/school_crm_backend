@@ -6,6 +6,8 @@ import type { RoleBasedRequest } from "../../../../utils/types.js";
 import type { Response } from "express";
 import { createAuditLog } from "../../audit_controllers/audit.controllers.js";
 import { archiveData } from "../../deleteArchieve_controller/deleteArchieve.controller.js";
+import redisClient from "../../../../config/redisConfig.js";
+import { REDIS_KEYS } from "../../../../constants/constant.js";
 
 // ============================
 // 1. GET SECTIONS
@@ -19,14 +21,44 @@ export const getSections = async (req: RoleBasedRequest, res: Response) => {
             return res.status(400).json({ ok: false, message: "classId or schoolId is required" });
         }
 
-        const filter:any = {};
+        // Generate the specific cache key based on the query parameters
+        const cacheKey = REDIS_KEYS.schoolSections(
+            schoolId as string,
+            classId as string | undefined
+        );
+
+        // 1. ATTEMPT CACHE READ
+        try {
+            const cachedData = await redisClient.get(cacheKey);
+            if (cachedData) {
+                // 🌟 Cache Hit: Returning with your requested custom message
+                return res.status(200).json({
+                    ok: true,
+                    data: JSON.parse(cachedData),
+                    message: "retrieved from cache"
+                });
+            }
+        } catch (redisError) {
+            console.error("Redis Get Error (Sections):", redisError);
+            // Fall through to MongoDB on Redis failure
+        }
+
+        const filter: any = {};
         if (classId) filter.classId = classId;
         if (schoolId) filter.schoolId = schoolId;
 
         const sections = await SectionModel.find(filter)
             .populate("classTeacherId", "userName email phoneNo")
             .populate("classId", "name") // Useful to see "Grade 10" next to "Section A"
-            .sort({ name: 1 }); // Sort A, B, C...
+            .sort({ name: 1 }) // Sort A, B, C...
+            .lean(); // Optimize read speed
+
+        // 3. UPDATE CACHE
+        try {
+            await redisClient.setex(cacheKey, 3600, JSON.stringify(sections)); // Cache for 1 hour
+        } catch (redisError) {
+            console.error("Redis Set Error (Sections):", redisError);
+        }
 
         return res.status(200).json({ ok: true, data: sections });
     } catch (error: any) {
@@ -89,6 +121,21 @@ export const createSection = async (req: RoleBasedRequest, res: Response) => {
             classDoc.hasSections = true;
             classDoc.classTeacherId = [];
             await classDoc.save();
+
+            // Note: Because we modified a class document, we should invalidate the class cache too!
+            try {
+                await redisClient.del(REDIS_KEYS.schoolClasses(schoolId));
+            } catch (err) { /* ignore */ }
+        }
+
+        // 🌟 INVALIDATE SECTION CACHES (Both specific class AND general school)
+        try {
+            await redisClient.del(
+                REDIS_KEYS.schoolSections(schoolId), // The "all" sections view
+                REDIS_KEYS.schoolSections(schoolId, classId) // The specific class view
+            );
+        } catch (redisError) {
+            console.error("Redis Del Error (Create Section):", redisError);
         }
 
         await createAuditLog(req, {
@@ -172,7 +219,7 @@ export const updateSection = async (req: RoleBasedRequest, res: Response) => {
         const { name, roomNumber, capacity } = req.body;
 
         // 1. Prepare Update Object (Clean & Dynamic)
-        const updates:any = {};
+        const updates: any = {};
         if (name) updates.name = name.trim();
         if (roomNumber) updates.roomNumber = roomNumber;
         if (capacity) updates.capacity = capacity;
@@ -210,6 +257,18 @@ export const updateSection = async (req: RoleBasedRequest, res: Response) => {
 
         if (!updatedSection) {
             return res.status(404).json({ ok: false, message: "Section not found" });
+        }
+
+        // 🌟 INVALIDATE SECTION CACHES
+        try {
+            const schoolIdStr = updatedSection.schoolId.toString();
+            const classIdStr = updatedSection.classId.toString();
+            await redisClient.del(
+                REDIS_KEYS.schoolSections(schoolIdStr),
+                REDIS_KEYS.schoolSections(schoolIdStr, classIdStr)
+            );
+        } catch (redisError) {
+            console.error("Redis Del Error (Update Section):", redisError);
         }
 
         await createAuditLog(req, {
@@ -281,6 +340,23 @@ export const deleteSection = async (req: RoleBasedRequest, res: Response) => {
             await ClassModel.findByIdAndUpdate(deletedSection.classId, {
                 hasSections: false
             });
+
+            // Invalidate class cache because we modified `hasSections` on the class doc
+            try {
+                await redisClient.del(REDIS_KEYS.schoolClasses(deletedSection.schoolId.toString()));
+            } catch (err) { /* ignore */ }
+        }
+
+        // 🌟 INVALIDATE SECTION CACHES
+        try {
+            const schoolIdStr = deletedSection.schoolId.toString();
+            const classIdStr = deletedSection.classId.toString();
+            await redisClient.del(
+                REDIS_KEYS.schoolSections(schoolIdStr),
+                REDIS_KEYS.schoolSections(schoolIdStr, classIdStr)
+            );
+        } catch (redisError) {
+            console.error("Redis Del Error (Delete Section):", redisError);
         }
 
 

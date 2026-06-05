@@ -10,6 +10,8 @@ import type { RoleBasedRequest } from "../../../../utils/types.js";
 import type { Response } from "express";
 import { createAuditLog } from "../../audit_controllers/audit.controllers.js";
 import { archiveData } from "../../deleteArchieve_controller/deleteArchieve.controller.js";
+import { REDIS_KEYS } from "../../../../constants/constant.js";
+import redisClient from "../../../../config/redisConfig.js";
 
 // ============================
 // GET CLASSES
@@ -17,9 +19,30 @@ import { archiveData } from "../../deleteArchieve_controller/deleteArchieve.cont
 export const getClasses = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { schoolId } = req.params;
+        const cacheKey = REDIS_KEYS.schoolClasses(schoolId);
+
+        // 1. ATTEMPT CACHE READ
+        try {
+            const cachedData = await redisClient.get(cacheKey);
+            if (cachedData) {
+                // Cache Hit! Return instantly.
+                return res.status(200).json({ ok: true, data: JSON.parse(cachedData) , message:"retrived from cache"});
+            }
+        } catch (redisError) {
+            console.error("Redis Get Error (Classes):", redisError);
+            // 🚨 Do not return here! If Redis fails, gracefully fall back to MongoDB
+        }
 
         const classes = await ClassModel.find({ schoolId }).populate("classTeacherId", "userName email")
-            .sort({ order: 1 }); // IMPORTANT: Sort by order (LKG, UKG, 1, 2...)
+            .sort({ order: 1 }).lean() // IMPORTANT: Sort by order (LKG, UKG, 1, 2...)
+
+        // 3. UPDATE CACHE
+        try {
+            // Cache for 1 hour (3600 seconds)
+            await redisClient.setex(cacheKey, 3600, JSON.stringify(classes));
+        } catch (redisError) {
+            console.error("Redis Set Error (Classes):", redisError);
+        }
 
         return res.status(200).json({ ok: true, data: classes });
     } catch (error: any) {
@@ -71,6 +94,13 @@ export const createClass = async (req: RoleBasedRequest, res: Response) => {
             hasSections, // If true, teacher is ignored
             classTeacherId: [] // If hasSections is true, this remains null
         });
+
+        // 🌟 INVALIDATE CACHE
+        try {
+            await redisClient.del(REDIS_KEYS.schoolClasses(schoolId));
+        } catch (redisError) {
+            console.error("Redis Del Error (Create Class):", redisError);
+        }
 
         await createAuditLog(req, {
             action: "create",
@@ -126,6 +156,14 @@ export const updateClass = async (req: RoleBasedRequest, res: Response) => {
 
         await classDoc.save();
 
+        // 🌟 INVALIDATE CACHE 
+        // Note: We use classDoc.schoolId because it's not in the request body/params
+        try {
+            await redisClient.del(REDIS_KEYS.schoolClasses(classDoc.schoolId.toString()));
+        } catch (redisError) {
+            console.error("Redis Del Error (Update Class):", redisError);
+        }
+
         await createAuditLog(req, {
             action: "edit",
             module: "class",
@@ -160,6 +198,13 @@ export const deleteClass = async (req: RoleBasedRequest, res: Response) => {
         const deleted = await ClassModel.findByIdAndDelete(id);
         if (!deleted) {
             return res.status(404).json({ ok: false, message: "Class not found" });
+        }
+
+        // 🌟 INVALIDATE CACHE
+        try {
+            await redisClient.del(REDIS_KEYS.schoolClasses(deleted.schoolId.toString()));
+        } catch (redisError) {
+            console.error("Redis Del Error (Delete Class):", redisError);
         }
 
         await archiveData({

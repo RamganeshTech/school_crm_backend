@@ -39,3 +39,17 @@ const studentFeeColumns = [
 
 // module.exports = studentFeeColumns;
 export default studentFeeColumns;
+
+
+
+
+export const REDIS_KEYS = {
+    // Other keys...
+    
+    // Group class caches strictly by schoolId
+    schoolClasses: (schoolId: string) => `school:${schoolId}:classes`,
+
+    // NEW: Handle both "all" and specific "classId" section queries
+    schoolSections: (schoolId: string, classId?: string) => 
+        `school:${schoolId}:sections:class:${classId || 'all'}`,
+};
