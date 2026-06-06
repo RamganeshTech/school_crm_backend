@@ -24,6 +24,7 @@ export interface IClubQuiz extends Document {
     description?: string;
     questions: IQuizQuestion[];
     totalPoints: number;
+    isGeneratedByAi: boolean;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -48,7 +49,8 @@ const ClubQuizSchema = new Schema<IClubQuiz>({
     description: { type: String },
     questions: { type: [questions], default: [] },
     totalPoints: { type: Number, default: 0 },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    isGeneratedByAi: {type:Boolean, default:false}
 }, { timestamps: true });
 
 const ClubQuizModel = model('ClubQuizModel', ClubQuizSchema);

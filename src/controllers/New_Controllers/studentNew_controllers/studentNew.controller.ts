@@ -120,7 +120,7 @@ export const createStudentProfile = async (req: RoleBasedRequest, res: Response)
         const parentMobile = mandatoryData?.mobileNumber;
 
         if (parentMobile) {
-            console.log("333333333")
+            // console.log("333333333")
             // We use findOneAndUpdate with $addToSet
             // $addToSet: Adds the ID only if it does NOT already exist in the array.
             const updatedParent = await UserModel.findOneAndUpdate(
@@ -134,7 +134,7 @@ export const createStudentProfile = async (req: RoleBasedRequest, res: Response)
                 { new: true } // Returns the updated document (optional, for logging)
             );
 
-            console.log("444444", updatedParent)
+            // console.log("444444", updatedParent)
 
 
             if (updatedParent) {
@@ -375,7 +375,17 @@ export const getAllStudents = async (req: RoleBasedRequest, res: Response) => {
             page = 1,
             limit = 10,
             academicYear,
-            search // Optional search by name/srId
+            search, // Optional search by name/srId
+
+            isActive,
+            newOld,
+            gender,
+            bloodGroup,
+            // 🌟 NEW FILTERS ADDED HERE:
+            admissionNumber,
+            admissionDate,
+            rollNumber,
+            mobileNumber
         } = req.query;
 
         if (!schoolId) {
@@ -398,6 +408,47 @@ export const getAllStudents = async (req: RoleBasedRequest, res: Response) => {
                 { studentName: { $regex: search, $options: "i" } },
                 { srId: { $regex: search, $options: "i" } }
             ];
+        }
+
+
+        // ... your other demographic filters (isActive, gender, etc.) ...
+
+        // 🌟 2. Non-Mandatory Sub-object Filters
+        if (admissionNumber) {
+            filter["nonMandatory.admissionNumber"] = { $regex: admissionNumber, $options: "i" };
+        }
+
+        if (admissionDate) {
+            filter["nonMandatory.admissionDate"] = admissionDate; // Exact date string match (DD/MM/YYYY)
+        }
+
+        if (rollNumber) {
+            filter["nonMandatory.rollNumber"] = { $regex: rollNumber, $options: "i" };
+        }
+
+
+        // 🌟 ADD THESE MISSING FILTERS HERE:
+        if (isActive !== undefined && isActive !== '') {
+            filter.isActive = isActive === 'true'; 
+        }
+
+        if (newOld) {
+            // Using regex "i" so it matches "new", "New", "OLD", "old" regardless of case
+            filter.newOld = { $regex: newOld, $options: "i" }; 
+        }
+
+        if (gender) {
+            filter["mandatory.gender"] = gender;
+        }
+
+        if (bloodGroup) {
+            filter["mandatory.bloodGroup"] = bloodGroup;
+        }
+
+
+        // 🌟 1. Mandatory Sub-object Filters
+        if (mobileNumber) {
+            filter["mandatory.mobileNumber"] = { $regex: mobileNumber, $options: "i" };
         }
 
         // Pagination Calculation
@@ -679,7 +730,7 @@ export const submitProfileUpdateRequest = async (req: RoleBasedRequest, res: Res
 
     } catch (error: any) {
         console.error("Submit Update Request Error:", error);
-        return res.status(500).json({ ok: false, message: "Internal server error",error:error?.message });
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error?.message });
     }
 };
 
@@ -702,7 +753,7 @@ export const getPendingRequestsForStudent = async (req: RoleBasedRequest, res: R
         return res.status(200).json({ ok: true, data: requests });
     } catch (error: any) {
         console.error("Get Student Requests Error:", error);
-        return res.status(500).json({ ok: false, message: "Internal server error", error:error?.message });
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error?.message });
     }
 };
 
@@ -726,7 +777,7 @@ export const getAllPendingRequests = async (req: RoleBasedRequest, res: Response
         return res.status(200).json({ ok: true, data: requests });
     } catch (error: any) {
         console.error("Get All Pending Requests Error:", error);
-        return res.status(500).json({ ok: false, message: "Internal server error" , error:error?.message});
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error?.message });
     }
 };
 
@@ -804,6 +855,6 @@ export const reviewProfileUpdateRequest = async (req: RoleBasedRequest, res: Res
         await session.abortTransaction();
         session.endSession();
         console.error("Review Request Error:", error);
-        return res.status(500).json({ ok: false, message: error.message || "Internal server error" , error:error?.message });
+        return res.status(500).json({ ok: false, message: error.message || "Internal server error", error: error?.message });
     }
 };

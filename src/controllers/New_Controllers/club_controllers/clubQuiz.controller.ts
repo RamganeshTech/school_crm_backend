@@ -1,7 +1,7 @@
 import ClubQuizModel from "../../../models/New_Model/club_model/ClubQuiz.model.js";
 import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
 // import genAI from "../../../Config/geminiConfig.js";
-import { ClubVideoModel } from "../../../models/New_Model/club_model/club.model.js";
+import { ClubVideoModel, type IUpload } from "../../../models/New_Model/club_model/club.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";
 import genAI from "../../../config/geminiConfig.js";
@@ -67,7 +67,8 @@ export const createClubQuiz = async (req: RoleBasedRequest, res: Response) => {
             questions,
             totalPoints: calculatedTotalPoints,
             academicYear,
-            isActive: true
+            isActive: true,
+            isGeneratedByAi: false
         });
 
         await newQuiz.save();
@@ -222,10 +223,18 @@ export const createQuizWithAI = async (req: RoleBasedRequest, res: Response) => 
             classId,
             sectionId,
             academicYear,
-            numberOfQuestions = 10
+            numberOfQuestions = 10, 
+            pdfId
+
         } = req.body;
 
         const schoolId = req.body.schoolId || req.user?.schoolId;
+
+        // return res.send("done")
+
+        if(!pdfId){
+            return res.status(404).json({ ok: false, message: "pdfId is required" });
+        }
 
 
         if (!schoolId)
@@ -247,19 +256,37 @@ export const createQuizWithAI = async (req: RoleBasedRequest, res: Response) => 
             return res.status(404).json({ ok: false, message: "No PDF found for analysis." });
         }
 
-        const pdfUrl = videoRecord.pdfs[0].url;
+
+        const videoPdfs = videoRecord.pdfs || []
+
+        // 🌟 FIX: Safely compare IDs using toString() 
+        const selectedPdf = videoPdfs.find((pdf: any) => pdf?._id?.toString() === pdfId?.toString());
+
+        // 🌟 FIX: Prevent server crash if the PDF is missing
+        if (!selectedPdf || !selectedPdf.url) {
+            return res.status(404).json({ ok: false, message: "The specific PDF requested could not be found." });
+        }
+
+
+        const pdfUrl = selectedPdf?.url;
         const pdfResponse = await fetch(pdfUrl);
         const pdfBuffer = await pdfResponse.arrayBuffer();
         const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
 
         // 3. New SDK Call Structure using 'ai'
         const response = await genAI.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.5-flash",
             contents: [
                 {
                     role: "user",
                     parts: [
-                        { text: `Analyze this PDF. Generate a quiz title, a 1 sentence small description, and ${numberOfQuestions} MCQs based on the content. Each question must carry exactly 1 point.` },
+                        // { text: `Analyze this PDF. Generate a quiz title, a 1 sentence small description, and ${numberOfQuestions} MCQs based on the content. Each question must carry exactly 1 point.` },
+                        {
+                            text: `Analyze this PDF. Generate a quiz title, a 1 sentence small description, and ${numberOfQuestions} multiple-choice questions based on the content. 
+Strict Rules:
+1. Every question MUST have exactly 4 options.
+2. The correctOptionIndex MUST be a 0-based integer (0, 1, 2, or 3) that accurately points to the correct string inside the options array.
+3. Each question must carry exactly 1 point.` },
                         { inlineData: { mimeType: "application/pdf", data: base64Pdf } }
                     ]
                 }
@@ -281,7 +308,7 @@ export const createQuizWithAI = async (req: RoleBasedRequest, res: Response) => 
                                     correctOptionIndex: { type: "integer" },
                                     points: {
                                         type: "integer",
-                                        enum: [1] // THIS FORCES THE AI TO ONLY USE THE VALUE 1
+                                        // enum: [1] // THIS FORCES THE AI TO ONLY USE THE VALUE 1
                                     }
                                 },
                                 required: ["questionText", "options", "correctOptionIndex", "points"]
@@ -320,7 +347,8 @@ export const createQuizWithAI = async (req: RoleBasedRequest, res: Response) => 
             description: aiGeneratedData.description,
             questions: aiGeneratedData.questions,
             totalPoints,
-            isActive: true
+            isActive: true,
+            isGeneratedByAi: true
         });
 
         await newQuiz.save();

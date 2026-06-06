@@ -6,8 +6,8 @@ import { getSingleUser, getUsersBySchool } from '../../../controllers/New_Contro
 const userRoutes = express.Router()
 
 // but this is old , belwo normal '/create' is the new one 
-userRoutes.post('/v1/create', multiRoleAuth("correspondent", "administrator"), createUser);
-userRoutes.post('/create', multiRoleAuth("correspondent", "administrator"), createUserV1);
+userRoutes.post('/create', multiRoleAuth("correspondent", "administrator"), createUser);
+userRoutes.post('/v1/create', multiRoleAuth("correspondent", "administrator"), createUserV1);
 
 userRoutes.post('/login', loginUser);
 userRoutes.post('/logout', logoutUser);
