@@ -14,7 +14,7 @@ const feeStructureRoutes = express.Router();
 // Access: PlatformAdmin, Correspondent, Principal
 feeStructureRoutes.post(
   "/set",
-  multiRoleAuth("correspondent", "administrator"),
+  multiRoleAuth("correspondent", "administrator", "accountant"),
   setFeeStructure
 );
 
