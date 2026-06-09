@@ -149,7 +149,7 @@ studentRecordRoutes.put(
 
 studentRecordRoutes.put(
   "/assign",
-  multiRoleAuth("correspondent", "administrator"),
+  multiRoleAuth("correspondent", "administrator", "accountant"),
   assignStudentToClass
 );
 
@@ -158,7 +158,7 @@ studentRecordRoutes.put(
 
 studentRecordRoutes.put(
   "/remove",
-  multiRoleAuth("correspondent", "administrator"),
+  multiRoleAuth("correspondent", "administrator", "accountant"),
   removeStudentFromClass
 );
 

@@ -94,7 +94,7 @@ studentRoutes.get(
 
 studentRoutes.put(
   "/assignstudent",
-  multiRoleAuth("correspondent", "administrator"),
+  multiRoleAuth("correspondent", "administrator", "accountant"),
   featureGuard("studentRecord"),
 
   assignStudentToParent
@@ -103,7 +103,7 @@ studentRoutes.put(
 
 studentRoutes.put(
   "/removestudent",
-  multiRoleAuth("correspondent", "administrator"),
+  multiRoleAuth("correspondent", "administrator", "accountant"),
   featureGuard("studentRecord"),
   removeStudentFromParent
 );
