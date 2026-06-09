@@ -84,6 +84,7 @@ export interface IStudentNew extends Document {
     clubs: Types.ObjectId[];
     mandatory: IStudentMandatory;
     nonMandatory: IStudentNonMandatory;
+    documents: IStudentUpload[]
     createdAt: Date;
     updatedAt: Date;
 }
@@ -149,7 +150,7 @@ const StudentNewSchema = new Schema<IStudentNew>({
     },
 
     // === NON-MANDATORY DETAILS (Health, Talents) (UDISE FORM) ===
-    nonMandatory: {     
+    nonMandatory: {
         facilitiesProvided: { type: String, default: null },
         facilitiesForCWSN: { type: String, default: null },
         screenedForSLD: { type: String, default: null },
@@ -180,7 +181,10 @@ const StudentNewSchema = new Schema<IStudentNew>({
         previousResult: { type: String, default: null },
         marksObtainedPercentage: { type: String, default: null },
         daysAttendedLastYear: { type: String, default: null },
-    }
+    },
+
+
+    documents: {type: [uploadSchema], default:[]}
 
 }, { timestamps: true });
 
@@ -222,7 +226,7 @@ StudentNewSchema.pre("save", async function (next) {
         this.srId = `SR-${sequenceString}`;
 
         next();
-    } catch (error:any) {
+    } catch (error: any) {
         next(error);
     }
 });

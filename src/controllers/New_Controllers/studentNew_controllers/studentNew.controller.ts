@@ -290,6 +290,106 @@ export const updateStudent = async (req: RoleBasedRequest, res: Response) => {
     }
 };
 
+
+const processFiles = async (filesArray: any[]) => {
+    if (!filesArray || filesArray.length === 0) return [];
+    return await Promise.all(
+        filesArray.map(async (file) => {
+            const uploadData = await uploadFileToS3New(file);
+            const type = file.mimetype.startsWith("image") ? "image" : "pdf";
+            return {
+                url: uploadData.url,
+                key: uploadData.key,
+                type: type,
+                originalName: file.originalname,
+                uploadedAt: new Date()
+            };
+        })
+    );
+};
+
+
+export const uploadStudentFiles = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { studentId } = req.params
+
+        if (!studentId) {
+            return res.status(404).json({ ok: false, message: "StudentId not found" });
+        }
+
+        const files: any = req.files;
+
+        const uploadedFiles = await processFiles(files);
+
+
+        const updatedStudent = await StudentNewModel.findByIdAndUpdate(
+            studentId,
+            {
+                $push: {
+                    documents: { $each: uploadedFiles }
+                }
+            },
+            { new: true, runValidators: true }
+        )
+
+
+        if (!updatedStudent) {
+            return res.status(404).json({ ok: false, message: "Student not found" });
+        }
+
+        // 🌟 4. FIX: Send back success response to the frontend client
+        return res.status(200).json({
+            ok: true,
+            message: `${uploadedFiles.length} Document(s) attached successfully`,
+            data: updatedStudent.documents
+        });
+
+    } catch (error: any) {
+        console.error("upload file Student Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
+    }
+}
+
+
+// backend/src/controllers/student.controller.ts
+
+export const deleteStudentDocument = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { studentId, documentId } = req.params;
+
+        if (!studentId || !documentId) {
+            return res.status(400).json({ ok: false, message: "Student ID and Document ID are required" });
+        }
+
+        // Optional: If you use Cloudinary/AWS, you should fetch the student first, 
+        // find the document's 'publicId', and delete it from your cloud storage here
+        // to prevent storage leaks before removing it from MongoDB!
+
+        // Remove the document from the array
+        const updatedStudent = await StudentNewModel.findByIdAndUpdate(
+            studentId,
+            {
+                $pull: { documents: { _id: documentId } } // Matches the specific document ID inside the array
+            },
+            { new: true }
+        ).select("-__v");
+
+        if (!updatedStudent) {
+            return res.status(404).json({ ok: false, message: "Student record not found" });
+        }
+
+        return res.status(200).json({
+            ok: true,
+            message: "Document deleted successfully",
+            data: updatedStudent.documents
+        });
+
+    } catch (error: any) {
+        console.error("Delete student document error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
+    }
+};
+
 // ==========================================
 // 2. DELETE STUDENT PROFILE
 // ==========================================
@@ -429,12 +529,12 @@ export const getAllStudents = async (req: RoleBasedRequest, res: Response) => {
 
         // 🌟 ADD THESE MISSING FILTERS HERE:
         if (isActive !== undefined && isActive !== '') {
-            filter.isActive = isActive === 'true'; 
+            filter.isActive = isActive === 'true';
         }
 
         if (newOld) {
             // Using regex "i" so it matches "new", "New", "OLD", "old" regardless of case
-            filter.newOld = { $regex: newOld, $options: "i" }; 
+            filter.newOld = { $regex: newOld, $options: "i" };
         }
 
         if (gender) {
