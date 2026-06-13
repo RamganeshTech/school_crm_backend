@@ -5,6 +5,7 @@ import type { RoleBasedRequest } from "../../../utils/types.js";
 // import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import FeeStructureConfigModel from "../../../models/New_Model/FeeStructureModel/feeStructureConfig.model.js";
 
 // ==========================================
 // SET / UPDATE FEE STRUCTURE
@@ -89,6 +90,8 @@ export const setFeeStructure = async (req: RoleBasedRequest, res: Response) => {
   }
 };
 
+
+
 // ==========================================
 // GET FEE STRUCTURE (By Class)
 // ==========================================
@@ -166,7 +169,7 @@ export const deleteFeeStructure = async (req: RoleBasedRequest, res: Response) =
   try {
     const { id } = req.params;
 
-    const updatedFee:any = await FeeStructureModel.findByIdAndDelete(
+    const updatedFee: any = await FeeStructureModel.findByIdAndDelete(
       id
     );
 
@@ -189,5 +192,242 @@ export const deleteFeeStructure = async (req: RoleBasedRequest, res: Response) =
   } catch (error: any) {
     console.error("Set Fee Error:", error);
     return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
+  }
+};
+
+
+
+//  NEW VERSIONS
+
+// ==========================================
+// SET / UPDATE FEE STRUCTURE V1
+// Now feeHead is dynamic — keys come from FeeStructureConfigModel
+//
+// Payload shape (same as before, just dynamic keys):
+// {
+//   schoolId, classId, type,
+//   feeHead: { "Tuition Fee": 5000, "Transport Fee": 1200 }
+// }
+// ==========================================
+export const setFeeStructureV1 = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { schoolId, classId, feeHead, type } = req.body;
+
+    // 1. Basic Validation
+    if (!schoolId || !classId || !feeHead) {
+      return res.status(400).json({
+        ok: false,
+        message: "schoolId, classId, and feeHead are required",
+      });
+    }
+
+    if (!type || (type !== "old" && type !== "new")) {
+      return res.status(400).json({
+        ok: false,
+        message: "type is required, it should be either new or old only",
+      });
+    }
+
+    // 2. Fetch Fee Config to get allowed feeHeads for this school
+    const feeConfig = await FeeStructureConfigModel.findOne({ schoolId });
+    if (!feeConfig || !feeConfig.feeHeads || feeConfig.feeHeads.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        message: "No FeeStructureConfig found for this school. Please configure fee heads first.",
+      });
+    }
+
+    const allowedHeads: string[] = feeConfig.feeHeads;
+
+    // 3. Validate that all submitted keys are in the config
+    const submittedHeads = Object.keys(feeHead);
+    const invalidHeads = submittedHeads.filter((h) => !allowedHeads.includes(h));
+    if (invalidHeads.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        message: `Invalid fee heads: [${invalidHeads.join(", ")}]. Allowed heads: [${allowedHeads.join(", ")}]`,
+      });
+    }
+
+    console.log("Configured Heads:", allowedHeads);
+    console.log("Incoming Heads:", Object.keys(feeHead));
+
+    // 4. Build a clean feeHead Map — only allowed heads, default missing ones to 0
+    const cleanFeeHead: Record<string, number> = {};
+    for (const head of allowedHeads) {
+      cleanFeeHead[head] = Number(feeHead[head] || 0);
+    }
+
+    // 5. Calculate total
+    const totalAmount = Object.values(cleanFeeHead).reduce((sum, val) => sum + val, 0);
+
+    // 6. Upsert
+    const updatedFee = await FeeStructureModel.findOneAndUpdate(
+      { schoolId, classId, type },
+      {
+        $set: {
+          feeHeads: cleanFeeHead,
+          totalAmount,
+          type,
+        },
+      },
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    // // Inside setFeeStructureV1
+    // let updatedFee = await FeeStructureModel.findOne({ schoolId, classId, type });
+
+    // if (!updatedFee) {
+    //   updatedFee = new FeeStructureModel({ schoolId, classId, type, feeHeads: {} });
+    // }
+
+    // // Clear existing map (optional, if you want a fresh replacement)
+    // // updatedFee.feeHeads.clear();
+
+    // // Set new values
+    // for (const [key, value] of Object.entries(cleanFeeHead)) {
+    //   updatedFee.feeHeads.set(key, value);
+    // }
+
+    // updatedFee.totalAmount = totalAmount;
+    // await updatedFee.save();
+
+    await createAuditLog(req, {
+      action: "create",
+      module: "fee_structure",
+      targetId: updatedFee._id,
+      description: `fee structure updated (${updatedFee._id})`,
+      status: "success",
+    });
+
+    return res.status(200).json({
+      ok: true,
+      message: "Fee structure updated successfully",
+      data: updatedFee,
+    });
+  } catch (error: any) {
+    console.error("Set Fee V1 Error:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// GET FEE STRUCTURE BY CLASS V1
+// ==========================================
+export const getFeeStructureByClassV1 = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { schoolId, classId } = req.query;
+
+    if (!schoolId || !classId) {
+      return res.status(400).json({
+        ok: false,
+        message: "schoolId and classId are required",
+      });
+    }
+
+    const feeStructure = await FeeStructureModel.find({ schoolId, classId });
+
+    if (!feeStructure || feeStructure.length === 0) {
+      // Fetch config so frontend knows what heads to expect
+      const feeConfig = await FeeStructureConfigModel.findOne({ schoolId });
+      const emptyHead: Record<string, number> = {};
+      if (feeConfig) {
+        for (const head of feeConfig.feeHeads) emptyHead[head] = 0;
+      }
+
+      return res.status(200).json({
+        ok: true,
+        message: "No fee structure found, returning default",
+        // data: {
+        //   type: null,
+        //   feeHeads: emptyHead,
+        //   totalAmount: 0,
+        // },
+        data: [
+          {
+            type: null,
+            feeHeads: emptyHead,
+            totalAmount: 0,
+          },
+        ],
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      message: "Fetched fee structure for class",
+      data: feeStructure,
+    });
+  } catch (error: any) {
+    console.error("Get Fee V1 Error:", error);
+    return res.status(500).json({ ok: false, message: "Internal server error" });
+  }
+};
+
+// ==========================================
+// GET ALL FEE STRUCTURES (School-wide) V1
+// ==========================================
+export const getFeeStructureV1 = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { schoolId } = req.query;
+
+    if (!schoolId) {
+      return res.status(400).json({
+        ok: false,
+        message: "schoolId is required",
+      });
+    }
+
+    const feeStructure = await FeeStructureModel.find({ schoolId });
+
+    return res.status(200).json({
+      ok: true,
+      message: "Fetched fee structure for all classes",
+      data: feeStructure,
+    });
+  } catch (error: any) {
+    console.error("Get Fee V1 Error:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Internal server error",
+      error: error?.message,
+    });
+  }
+};
+
+// ==========================================
+// DELETE FEE STRUCTURE V1 (no change in logic, kept for completeness)
+// ==========================================
+export const deleteFeeStructureV1 = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const updatedFee: any = await FeeStructureModel.findByIdAndDelete(id);
+
+    await archiveData({
+      schoolId: updatedFee.schoolId,
+      category: "student fee record",
+      originalId: updatedFee._id,
+      deletedData: updatedFee.toObject(),
+      deletedBy: req.user!._id || null,
+      reason: null,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      message: "Fee structure deleted successfully",
+      data: updatedFee,
+    });
+  } catch (error: any) {
+    console.error("Delete Fee V1 Error:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };

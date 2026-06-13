@@ -1,16 +1,18 @@
 import express from "express";
 import {
-  applyConcession, approveStudentRecordConcession, collectFeeAndManageRecord, deleteStudentRecord,
+  applyConcession, applyConcessionV1, approveStudentRecordConcession, collectFeeAndManageRecord, collectFeeAndManageRecordV1, deleteStudentRecord,
   getAllStudentRecords,
   getAllStudentRecordsV1,
   getStudentRecordById, getStudentRecordByIdV1, revertFeeTransaction,
+  revertFeeTransactionV1,
   toggleStudentRecordStatus, toggleStudentRecordStatusV1, updateConcessionDetails,
+  updateConcessionDetailsV1,
   uploadConcessionProof
 } from "../../../../controllers/New_Controllers/studentRecord_controller/studentRecord.controller.js";
 // import { upload } from "../../../../Utils/s3upload.js";
 import { multiRoleAuth } from "../../../../middleware/multiRoleRequest.js";
 import { upload } from "../../../../utils/s4UploadsNew.js";
-import { assignStudentToClass, removeStudentFromClass } from "../../../../controllers/New_Controllers/studentRecord_controller/assignStudentClass.controller.js";
+import { assignStudentToClass, assignStudentToClassv1, removeStudentFromClass, removeStudentFromClassv1 } from "../../../../controllers/New_Controllers/studentRecord_controller/assignStudentClass.controller.js";
 import { featureGuard } from "../../../../middleware/featureGuard.js";
 
 const studentRecordRoutes = express.Router();
@@ -44,6 +46,30 @@ studentRecordRoutes.put(
   updateConcessionDetails
 );
 
+
+
+
+// UPLOAD ROUTE
+studentRecordRoutes.post(
+  "/v1/applyconcession",
+  multiRoleAuth("correspondent", "accountant", "principal", "administrator"),
+  featureGuard("studentRecord"),
+  // "files" is the key name for form-data. 10 is max count.
+  upload.single("file"),
+  applyConcessionV1
+);
+
+
+
+studentRecordRoutes.put(
+  "/v1/updatevalue",
+  multiRoleAuth("correspondent", "accountant", "principal", "administrator"),
+  featureGuard("studentRecord"),
+  // "files" is the key name for form-data. 10 is max count.
+  updateConcessionDetailsV1
+);
+
+
 //  one file only allowed, it will take the first file
 studentRecordRoutes.put(
   "/update/proof",
@@ -70,6 +96,17 @@ studentRecordRoutes.post(
   upload.array("files"),
   collectFeeAndManageRecord
 );
+
+
+
+studentRecordRoutes.post(
+  "/v1/collectfee",
+  multiRoleAuth("correspondent", "accountant"),
+  featureGuard("studentRecord"),
+  upload.array("files"),
+  collectFeeAndManageRecordV1
+);
+
 
 
 studentRecordRoutes.get(
@@ -143,6 +180,16 @@ studentRecordRoutes.put(
 
 
 
+studentRecordRoutes.put(
+  "/v1/revertreceipt",
+  multiRoleAuth("correspondent", "accountant", "principal"),
+  featureGuard("studentRecord"),
+
+  revertFeeTransactionV1
+);
+
+
+
 
 //  assing the studnet to class or remove the student from class
 
@@ -160,6 +207,24 @@ studentRecordRoutes.put(
   "/remove",
   multiRoleAuth("correspondent", "administrator", "accountant"),
   removeStudentFromClass
+);
+
+
+
+
+studentRecordRoutes.put(
+  "/v1/assign",
+  multiRoleAuth("correspondent", "administrator", "accountant"),
+  assignStudentToClassv1
+);
+
+
+
+
+studentRecordRoutes.put(
+  "/v1/remove",
+  multiRoleAuth("correspondent", "administrator", "accountant"),
+  removeStudentFromClassv1
 );
 
 

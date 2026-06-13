@@ -3,22 +3,29 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 
 // 1. Sub-interface for the fee components
 export interface IFeeHead {
-    admissionFee: number;
-    firstTermAmt: number;
-    secondTermAmt: number;
-    busFirstTermAmt: number;
-    busSecondTermAmt: number;
+  admissionFee: number;
+  firstTermAmt: number;
+  secondTermAmt: number;
+  busFirstTermAmt: number;
+  busSecondTermAmt: number;
 }
 
 // 2. Main Fee Structure Interface
 export interface IFeeStructure extends Document {
-    schoolId: Types.ObjectId;
-    classId: Types.ObjectId;
-    type?: string | null;
-    feeHead: IFeeHead;
-    totalAmount: number;
-    createdAt: Date;
-    updatedAt: Date;
+  schoolId: Types.ObjectId;
+  classId: Types.ObjectId;
+  type?: string | null;
+  feeHead: IFeeHead;
+
+  /**
+     * Dynamic fee heads driven by FeeStructureConfigModel.feeHeads
+     * e.g., { "Tuition Fee": 5000, "Transport Fee": 1200, "Library Fee": 300 }
+     */
+  feeHeads: Map<string, number>;
+
+  totalAmount: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const FeeStructureSchema = new mongoose.Schema<IFeeStructure>({
@@ -37,6 +44,12 @@ const FeeStructureSchema = new mongoose.Schema<IFeeStructure>({
     // annualFee: { type: Number, default: 0 },
     busFirstTermAmt: { type: Number, default: 0 },
     busSecondTermAmt: { type: Number, default: 0 },
+  },
+
+  feeHeads: {
+    type: Map,
+    of: Number,
+    default: {},
   },
 
   totalAmount: { type: Number, default: 0 } // Auto-calculated sum

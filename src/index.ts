@@ -52,6 +52,7 @@ import { initSocket } from './config/socket.js';
 import markReportConfigRoutes from './routes/New_Routes/markReportCard_routes/markReportCofig.routes.js';
 import markReportRoutesV1 from './routes/New_Routes/markReportCard_routes/markReportCardv1.routes.js';
 import markReportRoutes from './routes/New_Routes/markReportCard_routes/markReportCard.routes.js';
+import feeStructureConfigRoutes from './routes/New_Routes/feeStructure_routes/feeStructrueConfig.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -79,6 +80,7 @@ app.use('/api/class', classRoutes)
 app.use('/api/section', sectionRoutes)
 app.use('/api/teacher', teacherRoutes)
 app.use('/api/feestructure', feeStructureRoutes)
+app.use('/api/fee-config', feeStructureConfigRoutes)
 app.use('/api/student', studentRoutes)
 app.use('/api/studentrecord', studentRecordRoutes)
 app.use('/api/attendance', attendanceRoutes)

@@ -1,6 +1,6 @@
 import express from "express";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
-import { getAllFeeTransactions, getFeeTransactionById } from "../../../controllers/New_Controllers/feeReceipt_controllers/feeReceipt.controllers.js";
+import { getAllFeeTransactions, getFeeTransactionById, updateChequeStatus } from "../../../controllers/New_Controllers/feeReceipt_controllers/feeReceipt.controllers.js";
 
 const feeReceiptRoutes = express.Router();
 
@@ -19,5 +19,15 @@ feeReceiptRoutes.get(
   multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "parent"),
   getFeeTransactionById
 );
+
+
+feeReceiptRoutes.patch(
+  "/v1/update-status/:id",
+  multiRoleAuth("correspondent", "administrator", "accountant",),
+  updateChequeStatus
+);
+
+
+
 
 export default feeReceiptRoutes;

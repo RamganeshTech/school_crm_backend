@@ -43,6 +43,12 @@ export interface IStudentRecord extends Document {
     rollNumber?: string | null;
     feeStructure: IFeeData;
     feePaid: IFeeData;
+
+    feeStructurev1: Map<string, number>;
+    feePaidv1: Map<string, number>;
+    duesv1: Map<string, number>;
+
+    // feePaid: IFeeData;
     concession: IConcession;
     dues: {
         admissionDues: number | null;
@@ -60,13 +66,13 @@ export interface IStudentRecord extends Document {
 }
 
 
-    const uploadSchema = new Schema<IRecordUpload>({
-        type: { type: String, enum: ["image", "pdf"] },
-        key: { type: String, },
-        url: { type: String, },
-        originalName: String,
-        uploadedAt: { type: Date, default: new Date() }
-    });
+const uploadSchema = new Schema<IRecordUpload>({
+    type: { type: String, enum: ["image", "pdf"] },
+    key: { type: String, },
+    url: { type: String, },
+    originalName: String,
+    uploadedAt: { type: Date, default: new Date() }
+});
 
 
 
@@ -100,6 +106,13 @@ const StudentRecordSchema = new mongoose.Schema<IStudentRecord>({
         busSecondTermAmt: { type: Number, default: 0 },
     },
 
+    // === FINANCIALS: FEE STRUCTURE (Targets) ===
+    feeStructurev1: {
+        type: Map,
+        of: Number,
+        default: {},
+    },
+
     // === 2. FEE PAID (The Actuals / Collected So Far) ===
     // This increases every time a receipt is generated via FIFO
     feePaid: {
@@ -108,6 +121,12 @@ const StudentRecordSchema = new mongoose.Schema<IStudentRecord>({
         secondTermAmt: { type: Number, default: 0 },
         busFirstTermAmt: { type: Number, default: 0 },
         busSecondTermAmt: { type: Number, default: 0 },
+    },
+
+    feePaidv1: {
+        type: Map,
+        of: Number,
+        default: {},
     },
 
 
@@ -129,6 +148,13 @@ const StudentRecordSchema = new mongoose.Schema<IStudentRecord>({
         busfirstTermDues: { type: Number, default: null },
         busSecondTermDues: { type: Number, default: null },
     },
+
+    duesv1: {
+        type: Map,
+        of: Number,
+        default: {},
+    },
+
     isActive: { type: Boolean, default: true },
 
     isBusApplicable: { type: Boolean, default: false }, // The new field
