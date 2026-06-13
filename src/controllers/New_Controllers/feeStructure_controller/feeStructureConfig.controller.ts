@@ -1,5 +1,5 @@
 import { type Response } from 'express';
-import FeeStructureConfigModel  from '../../../models/New_Model/FeeStructureModel/feestructureConfig.model.js';
+import FeeStructureConfigModel from '../../../models/New_Model/FeeStructureModel/feeStructureConfig.model.js';
 
 // =========================================================
 // 1. UPSERT (CREATE OR UPDATE) FEE CONFIGURATION
@@ -7,7 +7,7 @@ import FeeStructureConfigModel  from '../../../models/New_Model/FeeStructureMode
 export const upsertFeeConfig = async (req: any, res: Response) => {
     try {
         const schoolId = req.params?.schoolId;
-        const { feeHeads, isActive } = req.body;
+        const { feeHeads, isActive } = req.body;   
 
         if (!schoolId) {
             return res.status(400).json({ ok: false, message: "School ID is required" });
