@@ -1,5 +1,5 @@
 import express from "express";
-import { deleteFeeStructure, deleteFeeStructureV1, getFeeStructure, getFeeStructureByClass, getFeeStructureByClassV1, getFeeStructureV1, setFeeStructure, setFeeStructureV1 } from "../../../controllers/New_Controllers/feeStructure_controller/feeStructure.controller.js";
+import { deleteFeeStructure, getFeeStructure, getFeeStructureByClass, getFeeStructureByClassV1, setFeeStructure, setFeeStructureV1 } from "../../../controllers/New_Controllers/feeStructure_controller/feeStructure.controller.js";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 // import { setFeeStructure, getFeeStructureByClass } from "../controllers/feeStructureController.js";
 // import { multiRoleAuth } from "../middlewares/authMiddleware.js";
@@ -62,18 +62,6 @@ feeStructureRoutes.get(
 );
 
 
-feeStructureRoutes.delete(
-  "/v1/delete/:id",
-  multiRoleAuth("correspondent", "administrator"),
-  deleteFeeStructureV1
-);
-
-
-feeStructureRoutes.get(
-  "/v1/getall",
-  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "teacher", "parent"),
-  getFeeStructureV1
-);
 
 
 export default feeStructureRoutes;

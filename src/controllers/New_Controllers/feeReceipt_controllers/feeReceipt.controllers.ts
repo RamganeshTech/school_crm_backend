@@ -11,8 +11,15 @@ import { createLedgerEntry } from "../financeLedger_controller/financeLedger.con
 // ======================================================
 export const getAllFeeTransactions = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { studentId, studentRecordId } = req.query;
-        const schoolId = req.user!.schoolId; // Assuming you have auth middleware
+        const { studentId, studentRecordId, schoolId } = req.query;
+        // const schoolId = req.user!.schoolId; // Assuming you have auth middleware
+
+        if(!schoolId){
+              return res.status(400).json({
+                ok: false,
+                message: "schoolId is required."
+            });
+        }
 
         // 1. Initialize Filter with School Security
         let filter:any = { schoolId: schoolId };
