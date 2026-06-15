@@ -2285,6 +2285,7 @@ export const getAllStudentRecords = async (req: RoleBasedRequest, res: Response)
             // 3. Status Filters
             newOld,         // "New" or "Old"
             isActive,       // true/false
+            phone,
 
             // 4. Financial/Feature Filters
             isBusApplicable, // true/false
@@ -2324,6 +2325,10 @@ export const getAllStudentRecords = async (req: RoleBasedRequest, res: Response)
         }
         if (sectionId) {
             query.sectionId = new mongoose.Types.ObjectId(sectionId);
+        }
+
+        if(phone){
+            query.mandatory.mobileNumber = phone;
         }
 
         // --- 3. STATUS FILTERS ---
@@ -2409,6 +2414,7 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
             classId,
             sectionId,
             isActive,
+            phone,
             isBusApplicable,
             isFullyPaid,
             hasConcession,
@@ -2449,6 +2455,7 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
 
         if (classId) postLookupMatch["recordData.classId"] = new mongoose.Types.ObjectId(classId as string);
         if (sectionId) postLookupMatch["recordData.sectionId"] = new mongoose.Types.ObjectId(sectionId as string);
+        if (phone) postLookupMatch["recordData.mandatory.mobileNumber"] = phone;
 
         if (isActive !== undefined) postLookupMatch["recordData.isActive"] = isActive === 'true';
         if (isBusApplicable !== undefined) postLookupMatch["recordData.isBusApplicable"] = isBusApplicable === 'true';
