@@ -1,0 +1,58 @@
+import express from 'express';
+import { multiRoleAuth } from '../../../../middleware/multiRoleRequest.js';
+import { getAllAdmissionForms, submitPublicAdmissionForm, 
+ getSingleAdmissionForm, 
+ deleteAdmissionForm,  
+ updateAdmissionFormStatus,
+ generateAdmissionLink} from '../../../../controllers/New_Controllers/school_controllers/admission_controllers/admissionForm.controller.js';
+// Adjust paths according to your structure
+// import { 
+//     getAllAdmissionForms, 
+//     getSingleAdmissionForm, 
+//     deleteAdmissionForm 
+// } from '../controllers/admissionForm.controller';
+// import { multiRoleAuth } from '../middlewares/auth.middleware';
+
+const schoolAdmissionFormRoutes = express.Router();
+
+// ==========================================
+// BASE ROUTE: /api/school/admission-form
+// ROLE ACCESS: Correspondent & Administrator
+// ==========================================
+schoolAdmissionFormRoutes.post(
+    '/generate-link', 
+    multiRoleAuth("correspondent", "administrator"), 
+    generateAdmissionLink
+);
+
+schoolAdmissionFormRoutes.put('/admissions/submit/:id', submitPublicAdmissionForm);
+
+
+// 1. Get ALL admission forms for a school (Supports optional ?status= query)
+schoolAdmissionFormRoutes.get(
+    '/:schoolId', 
+    multiRoleAuth("correspondent", "administrator"), 
+    getAllAdmissionForms
+);
+
+// 2. Get a SINGLE admission form by its ID
+schoolAdmissionFormRoutes.get(
+    '/form/:id', 
+    multiRoleAuth("correspondent", "administrator"), 
+    getSingleAdmissionForm
+);
+
+// 3. Delete an admission form
+schoolAdmissionFormRoutes.delete(
+    '/:id', 
+    multiRoleAuth("correspondent", "administrator"), 
+    deleteAdmissionForm
+);
+
+schoolAdmissionFormRoutes.patch(
+    '/:id/status', 
+    multiRoleAuth("correspondent", "administrator"), 
+    updateAdmissionFormStatus
+);
+
+export default schoolAdmissionFormRoutes;

@@ -13,7 +13,7 @@ export interface IBillBook extends Document {
 
 const BillBookSchema = new Schema<IBillBook>({
     schoolId: { type: Schema.Types.ObjectId, ref: "SchoolModel", required: true },
-    academicYear: { type: String, required: true },
+    academicYear: { type: String },
     bookName: { type: String, required: true, trim: true }, // e.g., "Main Counter Book A"
     
     // The exact number the next receipt will use. 
@@ -24,7 +24,7 @@ const BillBookSchema = new Schema<IBillBook>({
 }, { timestamps: true });
 
 // Ensure only ONE active bill book exists per school per academic year
-// BillBookSchema.index({ schoolId: 1, academicYear: 1, isActive: 1 }, { unique: true, partialFilterExpression: { isActive: true } });
+BillBookSchema.index({ schoolId: 1});
 // Ensure book names are unique per school per year
 // BillBookSchema.index({ schoolId: 1, academicYear: 1, bookName: 1 }, { unique: true });
 

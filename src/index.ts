@@ -54,6 +54,8 @@ import markReportRoutesV1 from './routes/New_Routes/markReportCard_routes/markRe
 import markReportRoutes from './routes/New_Routes/markReportCard_routes/markReportCard.routes.js';
 import feeStructureConfigRoutes from './routes/New_Routes/feeStructure_routes/feeStructrueConfig.routes.js';
 import schoolBillBookRoutes from './routes/New_Routes/school_routes/billBook_routes/billBook.routes.js';
+import schoolAdmissionBookRoutes from './routes/New_Routes/school_routes/admission_routes/admissionBook.route.js';
+import schoolAdmissionFormRoutes from './routes/New_Routes/school_routes/admission_routes/admissionForm.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -88,6 +90,8 @@ app.use('/api/attendance', attendanceRoutes)
 app.use('/api/fee/receipt', feeReceiptRoutes)
 
 app.use('/api/school-config/bill-book', schoolBillBookRoutes)
+app.use('/api/school-config/admission-book', schoolAdmissionBookRoutes)
+app.use('/api/school/admission-form', schoolAdmissionFormRoutes)
 
 
 app.use('/api/timetable', timeTableRoutes)

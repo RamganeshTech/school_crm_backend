@@ -17,6 +17,7 @@ import { createLedgerEntry } from "../financeLedger_controller/financeLedger.con
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import FeeStructureConfigModel from "../../../models/New_Model/FeeStructureModel/feeStructureConfig.model.js";
+import BillBookModel from "../../../models/New_Model/SchoolModel/BillBook.model.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 
 
@@ -56,6 +57,31 @@ const generateReceiptNo = async (schoolId: string, session: any) => {
         }
     }
     return `REC-${year}-${String(nextNum).padStart(4, '0')}`;
+};
+
+
+// Helper: Increment alphanumeric string (e.g., "REC-001" -> "REC-002", "A-99" -> "A-100")
+const getNextAlphanumericSequence = (currentSequence: string): string => {
+    // Regex matches the prefix (anything) and the numbers at the very end
+    const trimmedSeq = currentSequence.trim();
+
+    const match = trimmedSeq.match(/(.*?)(\d+)$/);
+    
+    if (!match) {
+        // If there are no numbers at the end (e.g., just "REC"), append "1"
+        return `${trimmedSeq}1`;
+    }
+
+    const prefix = match[1];
+    const numStr =String(match[2]);
+    
+    // Increment the number
+    const nextNum = parseInt(numStr, 10) + 1;
+    
+    // Pad it back to the same length with leading zeros
+    const paddedNum = String(nextNum).padStart(numStr.length, '0');
+    
+    return `${prefix}${paddedNum}`;
 };
 
 // MASTER FEE COLLECTION CONTROLLER
@@ -450,6 +476,39 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
             { session }
         );
 
+        // ── 10.5. PROCESS BILL BOOK SEQUENCE ─────────────────────────────
+        let assignedBillNo = null;
+        
+        // Find the active bill book for this school & year
+        const activeBillBook = await BillBookModel.findOne({
+            schoolId,
+            academicYear: currentYear,
+            isActive: true
+        }).session(session);
+
+        if (activeBillBook && activeBillBook?.billNumber) {
+          const lastTransaction = await FeeTransactionModel.findOne({
+                schoolId,
+                academicYear: currentYear,
+                billNo: { $ne: null, $exists: true }
+            })
+            .sort({ createdAt: -1 })
+            .session(session);
+
+            // 2. Decide which number to use based on timestamps
+            if (lastTransaction && lastTransaction.createdAt > activeBillBook.updatedAt) {
+                // Scenario A: Normal sequence. The last transaction is newer than the bill book config.
+                // We increment from the last transaction's bill number.
+                assignedBillNo = getNextAlphanumericSequence(lastTransaction.billNo);
+            } else {
+                // Scenario B: First time use OR Staff manually edited the Bill Book config recently.
+                // We use the exact static number they configured.
+                assignedBillNo = activeBillBook.billNumber;
+            }
+
+            console.log("Assigned Bill Number for this receipt:", assignedBillNo);
+        }
+
         // 9. GENERATE RECEIPT (If Paid > 0)
         let receipt = null;
         if (payingAmount > 0) {
@@ -459,26 +518,6 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
             let status = "success";
             if (paymentMode.toLowerCase() === 'cheque') status = "pending";
 
-            // receipt = await FeeTransactionModel.create([{
-            //     schoolId,
-            //     studentId,
-            //     recordId: studentRecord._id,
-            //     academicYear: currentYear,
-            //     receiptNo,
-            //     paymentDate: new Date(),
-            //     paymentMode: paymentMode.toLowerCase(),
-            //     amountPaid: payingAmount,
-            //     allocation: receiptAllocationList,
-
-            //     cashDenominations: paymentMode.toLowerCase() === "cash"
-            //         ? (typeof cashDenominations === 'string' ? JSON.parse(cashDenominations) : cashDenominations)
-            //         : [],
-
-            //     referenceNumber, bankName, chequeDate,
-            //     collectedBy: req.user._id,
-            //     remarks,
-            //     status
-            // }], { session });
 
 
             const uploadedProof = await processFiles(files);
@@ -490,6 +529,7 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
                 recordId: studentRecord._id,
                 academicYear: currentYear,
                 receiptNo,
+                billNo: assignedBillNo, // 🌟 Inject the fetched bill number here
                 paymentDate: new Date(),
                 paymentMode: paymentMode.toLowerCase(),
                 amountPaid: payingAmount,
@@ -838,6 +878,42 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             { session }
         );
 
+           // ── 10.5. PROCESS BILL BOOK SEQUENCE ─────────────────────────────
+        let assignedBillNo = null;
+        
+        // Find the active bill book for this school & year
+        const activeBillBook = await BillBookModel.findOne({
+            schoolId,
+            // academicYear: currentYear,
+            isActive: true
+        }).session(session);
+
+        console.log("activeBill book", activeBillBook)
+
+        if (activeBillBook && activeBillBook?.billNumber) {
+          const lastTransaction = await FeeTransactionModel.findOne({
+                schoolId,
+                academicYear: currentYear,
+                billNo: { $ne: null, $exists: true }
+            })
+            .sort({ createdAt: -1 })
+            .session(session);
+
+            // 2. Decide which number to use based on timestamps
+            if (lastTransaction && lastTransaction.createdAt > activeBillBook.updatedAt) {
+                // Scenario A: Normal sequence. The last transaction is newer than the bill book config.
+                // We increment from the last transaction's bill number.
+                assignedBillNo = getNextAlphanumericSequence(lastTransaction.billNo);
+            } else {
+                // Scenario B: First time use OR Staff manually edited the Bill Book config recently.
+                // We use the exact static number they configured.
+                assignedBillNo = activeBillBook.billNumber;
+            }
+
+            console.log("Assigned Bill Number for this receipt:", assignedBillNo);
+        }
+
+
         // ── 11. GENERATE RECEIPT ─────────────────────────────────────────
         let receipt = null;
         if (payingAmount > 0) {
@@ -846,8 +922,11 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             const uploadedProof = await processFiles(files);
 
             const newReceiptEntry = new FeeTransactionModel({
-                schoolId, studentId, recordId: studentRecord._id, academicYear: currentYear,
-                receiptNo, paymentDate: new Date(), paymentMode: paymentMode.toLowerCase(),
+                schoolId, studentId, recordId: studentRecord._id, 
+                academicYear: currentYear,
+                receiptNo, 
+                billNo: assignedBillNo, // 🌟 Inject the fetched bill number here
+                paymentDate: new Date(), paymentMode: paymentMode.toLowerCase(),
                 amountPaid: payingAmount, allocation: receiptAllocationList, proofUpload: uploadedProof || [],
                 cashDenominations: paymentMode.toLowerCase() === "cash"
                     ? (typeof cashDenominations === "string" ? JSON.parse(cashDenominations) : cashDenominations) : [],

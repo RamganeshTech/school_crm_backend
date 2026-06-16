@@ -31,6 +31,7 @@ export interface IFeeTransaction extends Document {
     recordId: Types.ObjectId;
     academicYear: string | null;
     receiptNo: string;
+    billNo: string;
     paymentDate: Date;
     paymentMode: "cash" | "upi" | "cheque" | "bank_transfer";
     amountPaid: number;
@@ -75,6 +76,7 @@ const FeeTransactionSchema = new mongoose.Schema<IFeeTransaction>({
     academicYear: { type: String, default: null },
 
     receiptNo: { type: String, }, // REC-2025-001
+    billNo: { type: String, default:null }, // manual number
 
     paymentDate: { type: Date, default: new Date() },
     paymentMode: { type: String, enum: ["cash", "upi", "cheque", "bank_transfer"], },
@@ -82,7 +84,7 @@ const FeeTransactionSchema = new mongoose.Schema<IFeeTransaction>({
     amountPaid: { type: Number, },
 
     // The Allocation (Snapshot of what this receipt paid for)
-    allocation: {  
+    allocation: {
         type: [feeHeads], default: []
     },
 
@@ -92,7 +94,7 @@ const FeeTransactionSchema = new mongoose.Schema<IFeeTransaction>({
         default: []
     },
 
-    proofUpload : {type: [uploadSchema], default: []},
+    proofUpload: { type: [uploadSchema], default: [] },
 
     // Cheque / UPI Details
     referenceNumber: { type: String },

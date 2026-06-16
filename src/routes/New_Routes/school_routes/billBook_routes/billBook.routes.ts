@@ -4,7 +4,8 @@ import {
     createBillBook,
     getAllBillBooks,
     updateBillBook,
-    editBillNumber
+    editBillNumber,
+    deleteBillBook
 } from '../../../../controllers/New_Controllers/school_controllers/billBook_controller/billBook.controller.js';
 // Adjust the import paths based on your actual folder structure
 // import { 
@@ -48,6 +49,12 @@ schoolBillBookRoutes.patch(
     '/:id/sequence',
     multiRoleAuth("correspondent", "administrator"),
     editBillNumber
+);
+
+schoolBillBookRoutes.delete(
+    '/:id', 
+    multiRoleAuth("correspondent", "administrator"), 
+    deleteBillBook
 );
 
 export default schoolBillBookRoutes;
