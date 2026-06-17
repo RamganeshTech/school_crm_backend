@@ -17,7 +17,7 @@ feeStructureConfigRoutes.post(
 // Access: Accountant also needs this to see fees
 feeStructureConfigRoutes.get(
   "/get/:schoolId",
-  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "teacher"),
+  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "teacher", "parent"),
   getFeeConfig
 );
 

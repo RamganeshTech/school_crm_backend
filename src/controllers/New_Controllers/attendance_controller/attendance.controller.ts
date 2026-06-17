@@ -302,12 +302,12 @@ export const getClassAttendanceHistory = async (req: RoleBasedRequest, res: Resp
 
 
 
-
+// REPORT OF SINGLE STUDENT
 
 export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { studentId } = req.params;
-        const { month, year, academicYear } = req.query; // Expects month=10, year=2024
+        const { month, year, academicYear, startDate, endDate } = req.query; // Expects month=10, year=2024
 
         if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
             return res.status(400).json({ ok: false, message: "Invalid Student ID" });
@@ -316,19 +316,35 @@ export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Re
         // 1. Build the Date Filter
         let dateFilter = {};
 
-        if (month && year) {
-            // *** CHANGE: USE Date.UTC TO MATCH YOUR STORAGE LOGIC ***
+        // if (month && year) {
+        //     // *** CHANGE: USE Date.UTC TO MATCH YOUR STORAGE LOGIC ***
 
-            // Start: 1st day of month at 00:00:00 UTC
-            const startDate = new Date(Date.UTC(year, Number(month) - 1, 1));
+        //     // Start: 1st day of month at 00:00:00 UTC
+        //     const startDate = new Date(Date.UTC(year, Number(month) - 1, 1));
 
-            // End: Last day of month at 23:59:59.999 UTC
-            // (Day 0 of next month gives the last day of current month)
-            const endDate = new Date(Date.UTC(year, Number(month), 0, 23, 59, 59, 999));
+        //     // End: Last day of month at 23:59:59.999 UTC
+        //     // (Day 0 of next month gives the last day of current month)
+        //     const endDate = new Date(Date.UTC(year, Number(month), 0, 23, 59, 59, 999));
 
+        //     dateFilter = {
+        //         date: { $gte: startDate, $lte: endDate }
+        //     };
+        // }
+
+        // Use Custom Range if provided
+        if (startDate && endDate) {
             dateFilter = {
-                date: { $gte: startDate, $lte: endDate }
+                date: { 
+                    $gte: new Date(new Date(startDate as string).setUTCHours(0, 0, 0, 0)), 
+                    $lte: new Date(new Date(endDate as string).setUTCHours(23, 59, 59, 999)) 
+                }
             };
+        } 
+        // Fallback to specific Month/Year
+        else if (month && year) {
+            const start = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+            const end = new Date(Date.UTC(Number(year), Number(month), 0, 23, 59, 59, 999));
+            dateFilter = { date: { $gte: start, $lte: end } };
         }
 
 
@@ -394,6 +410,160 @@ export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Re
     }
 };
 
+
+// // ==========================================
+// // 2. GET MONTH-OVER-MONTH TRENDS (LINE CHART)
+// // ==========================================
+// export const getStudentMonthlyTrends = async (req: any, res: Response) => {
+//     try {
+//         const { studentId } = req.params;
+//         const { academicYear } = req.query;
+
+//         if (!studentId || !academicYear) return res.status(400).json({ ok: false, message: "Missing parameters" });
+
+//         const objectId = new mongoose.Types.ObjectId(studentId);
+
+//         const trends = await AttendanceModel.aggregate([
+//             // Match the school year and documents containing this student
+//             { $match: { academicYear, "records.studentId": objectId } },
+//             // Unwind the records array so we can process just this student's status
+//             { $unwind: "$records" },
+//             // Match the specific student again after unwinding
+//             { $match: { "records.studentId": objectId } },
+//             // Group by Year and Month
+//             {
+//                 $group: {
+//                     _id: { 
+//                         year: { $year: "$date" }, 
+//                         month: { $month: "$date" } 
+//                     },
+//                     totalDays: { $sum: 1 },
+//                     presentDays: {
+//                         $sum: { $cond: [{ $eq: ["$records.status", "present"] }, 1, 0] }
+//                     }
+//                 }
+//             },
+//             // Sort chronologically
+//             { $sort: { "_id.year": 1, "_id.month": 1 } },
+//             // Format for frontend
+//             {
+//                 $project: {
+//                     _id: 0,
+//                     year: "$_id.year",
+//                     month: "$_id.month",
+//                     percentage: {
+//                         $round: [{ $multiply: [{ $divide: ["$presentDays", "$totalDays"] }, 100] }, 2]
+//                     }
+//                 }
+//             }
+//         ]);
+
+//         return res.status(200).json({ ok: true, data: trends });
+//     } catch (error: any) {
+//         return res.status(500).json({ ok: false, message: "Failed to fetch trends." });
+//     }
+// };
+
+
+// ==========================================
+// 2. GET MONTH-OVER-MONTH TRENDS (MULTI-LINE CHART)
+// ==========================================
+export const getStudentMonthlyTrends = async (req: any, res: Response) => {
+    try {
+        const { studentId } = req.params;
+        const { academicYear } = req.query;
+
+        if (!studentId || !academicYear) return res.status(400).json({ ok: false, message: "Missing parameters" });
+
+        const objectId = new mongoose.Types.ObjectId(studentId);
+
+        const trends = await AttendanceModel.aggregate([
+            { $match: { academicYear, "records.studentId": objectId } },
+            { $unwind: "$records" },
+            { $match: { "records.studentId": objectId } },
+            {
+                $group: {
+                    _id: { 
+                        year: { $year: "$date" }, 
+                        month: { $month: "$date" } 
+                    },
+                    totalDays: { $sum: 1 },
+                    // 🌟 Count each status separately
+                    presentDays: { $sum: { $cond: [{ $eq: ["$records.status", "present"] }, 1, 0] } },
+                    absentDays: { $sum: { $cond: [{ $eq: ["$records.status", "absent"] }, 1, 0] } },
+                    lateDays: { $sum: { $cond: [{ $eq: ["$records.status", "late"] }, 1, 0] } },
+                    halfDayDays: { $sum: { $cond: [{ $eq: ["$records.status", "half-day"] }, 1, 0] } }
+                }
+            },
+            { $sort: { "_id.year": 1, "_id.month": 1 } },
+            {
+                $project: {
+                    _id: 0,
+                    year: "$_id.year",
+                    month: "$_id.month",
+                    // 🌟 Calculate percentages for all three
+                    presentPercentage: { $round: [{ $multiply: [{ $divide: ["$presentDays", "$totalDays"] }, 100] }, 2] },
+                    absentPercentage: { $round: [{ $multiply: [{ $divide: ["$absentDays", "$totalDays"] }, 100] }, 2] },
+                    latePercentage: { $round: [{ $multiply: [{ $divide: ["$lateDays", "$totalDays"] }, 100] }, 2] },
+                    halfDayPercentage: { $round: [{ $multiply: [{ $divide: ["$halfDayDays", "$totalDays"] }, 100] }, 2] }
+                }
+            }
+        ]);
+
+        return res.status(200).json({ ok: true, data: trends });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: "Failed to fetch trends." });
+    }
+};
+
+// ==========================================
+// 3. GET DAY-OF-WEEK PATTERNS (HEATMAP)
+// ==========================================
+// ==========================================
+// 3. GET DAY-OF-WEEK PATTERNS (HEATMAP / BAR)
+// ==========================================
+export const getStudentDayOfWeekPatterns = async (req: any, res: Response) => {
+    try {
+        const { studentId } = req.params;
+        const { academicYear } = req.query;
+
+        if (!studentId || !academicYear) return res.status(400).json({ ok: false, message: "Missing parameters" });
+
+        const objectId = new mongoose.Types.ObjectId(studentId);
+
+        const patterns = await AttendanceModel.aggregate([
+            { $match: { academicYear, "records.studentId": objectId } },
+            { $unwind: "$records" },
+            { $match: { "records.studentId": objectId } },
+            {
+                $group: {
+                    // 1 = Sunday, 2 = Monday, ..., 7 = Saturday
+                    _id: { dayOfWeek: { $dayOfWeek: "$date" } },
+                    totalAbsences: { $sum: { $cond: [{ $eq: ["$records.status", "absent"] }, 1, 0] } },
+                    totalLates: { $sum: { $cond: [{ $eq: ["$records.status", "late"] }, 1, 0] } },
+                    // 🌟 Added Half-Day counting logic
+                    totalHalfDays: { $sum: { $cond: [{ $eq: ["$records.status", "half-day"] }, 1, 0] } } 
+                }
+            },
+            { $sort: { "_id.dayOfWeek": 1 } }
+        ]);
+
+        // Map MongoDB Day IDs to String Labels for the Frontend
+        const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        
+        const formattedPatterns = patterns.map(p => ({
+            day: daysOfWeek[p._id.dayOfWeek - 1],
+            dayIndex: p._id.dayOfWeek,
+            absences: p.totalAbsences,
+            lates: p.totalLates,
+            halfDays: p.totalHalfDays // 🌟 Added to the response payload
+        }));
+
+        return res.status(200).json({ ok: true, data: formattedPatterns });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: "Failed to fetch patterns." });
+    }
+};
 
 
 // REPORT 

@@ -12,7 +12,7 @@ export interface IStudentUpload {
 // 2. UDISE Mandatory Fields
 export interface IStudentMandatory {
     gender?: string | null;
-    dob?: string | null;
+    dob?: Date | null;
     educationNumber?: string | null;
     motherName?: string | null;
     fatherName?: string | null;
@@ -85,6 +85,7 @@ export interface IStudentNew extends Document {
     mandatory: IStudentMandatory;
     nonMandatory: IStudentNonMandatory;
     documents: IStudentUpload[]
+    admissionRefId: Types.ObjectId | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -120,7 +121,7 @@ const StudentNewSchema = new Schema<IStudentNew>({
     // === MANDATORY DETAILS (Parents, Aadhar, Address) ===
     mandatory: {
         gender: { type: String, default: null },
-        dob: { type: String, default: null },
+        dob: { type: Date, default: null },
         educationNumber: { type: String, default: null },
         motherName: { type: String, default: null },
         fatherName: { type: String, default: null },
@@ -183,8 +184,8 @@ const StudentNewSchema = new Schema<IStudentNew>({
         daysAttendedLastYear: { type: String, default: null },
     },
 
-
-    documents: {type: [uploadSchema], default:[]}
+    admissionRefId: { type: mongoose.Schema.Types.ObjectId, ref: "AdmissionFormModel", default: null },
+    documents: { type: [uploadSchema], default: [] }
 
 }, { timestamps: true });
 

@@ -5,9 +5,10 @@ export interface IAdmissionForm extends Document {
     academicYear: string;
     formNumber: string; // The auto-generated ADM-2026-001 sequence
 
+    studentId: Types.ObjectId;
     // Student Details
     studentName: string;
-    phone: string;
+    mobileNumber: string;
     dob: Date;
     age: number;
     gender: string;
@@ -45,9 +46,10 @@ const AdmissionFormSchema = new Schema<IAdmissionForm>({
     schoolId: { type: Schema.Types.ObjectId, ref: "SchoolModel", required: true },
     // academicYear: { type: String, required: true },
     formNumber: { type: String, required: true },
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "StudentNewModel", default: null },
 
     studentName: { type: String },
-    phone: { type: String },
+    mobileNumber: { type: String },
     dob: { type: Date },
     age: { type: Number },
     gender: { type: String },

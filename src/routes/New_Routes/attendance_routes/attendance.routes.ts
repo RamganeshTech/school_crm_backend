@@ -1,5 +1,5 @@
 import express from "express";
-import { getAcademicYearLeaderboards, getAttendanceSheet, getClassAttendanceHistory, getClassAttendanceReport, getStudentAttendanceHistory, markAttendance } from "../../../controllers/New_Controllers/attendance_controller/attendance.controller.js";
+import { getAcademicYearLeaderboards, getAttendanceSheet, getClassAttendanceHistory, getClassAttendanceReport, getStudentAttendanceHistory, getStudentDayOfWeekPatterns, getStudentMonthlyTrends, markAttendance } from "../../../controllers/New_Controllers/attendance_controller/attendance.controller.js";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 import { featureGuard } from "../../../middleware/featureGuard.js";
 // import { 
@@ -50,6 +50,22 @@ attendanceRoutes.get(
   getStudentAttendanceHistory
 );
 
+
+// 2. Month-over-Month Line Chart Trends
+attendanceRoutes.get(
+  "/student/:studentId/trends",
+  multiRoleAuth("administrator", "accountant", "correspondent", "principal", "viceprincipal", "teacher", "parent"),
+  featureGuard("attendance"),
+  getStudentMonthlyTrends
+);
+
+// 3. Day of the Week Heatmap Patterns
+attendanceRoutes.get(
+  "/student/:studentId/patterns",
+  multiRoleAuth("administrator", "accountant", "correspondent", "principal", "viceprincipal", "teacher", "parent"),
+  featureGuard("attendance"),
+  getStudentDayOfWeekPatterns
+);
 
 attendanceRoutes.get(
   "/report/class",

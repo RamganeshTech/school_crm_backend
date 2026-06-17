@@ -4,7 +4,10 @@ import { getAllAdmissionForms, submitPublicAdmissionForm,
  getSingleAdmissionForm, 
  deleteAdmissionForm,  
  updateAdmissionFormStatus,
- generateAdmissionLink} from '../../../../controllers/New_Controllers/school_controllers/admission_controllers/admissionForm.controller.js';
+ generateAdmissionLink,
+ linkStudentToAdmissionForm,
+ updateAdmissionFormDetails,
+ getAdmissionFormsForDropdown} from '../../../../controllers/New_Controllers/school_controllers/admission_controllers/admissionForm.controller.js';
 // Adjust paths according to your structure
 // import { 
 //     getAllAdmissionForms, 
@@ -28,18 +31,26 @@ schoolAdmissionFormRoutes.post(
 schoolAdmissionFormRoutes.put('/admissions/submit/:id', submitPublicAdmissionForm);
 
 
+
+
+schoolAdmissionFormRoutes.get(
+    '/dropdown', 
+    multiRoleAuth("correspondent", "administrator"), 
+    getAdmissionFormsForDropdown
+);
+
+// 2. Get a SINGLE admission form by its ID
+schoolAdmissionFormRoutes.get(
+    '/form', 
+    multiRoleAuth("correspondent", "administrator"), 
+    getSingleAdmissionForm
+);
+
 // 1. Get ALL admission forms for a school (Supports optional ?status= query)
 schoolAdmissionFormRoutes.get(
     '/:schoolId', 
     multiRoleAuth("correspondent", "administrator"), 
     getAllAdmissionForms
-);
-
-// 2. Get a SINGLE admission form by its ID
-schoolAdmissionFormRoutes.get(
-    '/form/:id', 
-    multiRoleAuth("correspondent", "administrator"), 
-    getSingleAdmissionForm
 );
 
 // 3. Delete an admission form
@@ -50,9 +61,22 @@ schoolAdmissionFormRoutes.delete(
 );
 
 schoolAdmissionFormRoutes.patch(
-    '/:id/status', 
+    '/status', 
     multiRoleAuth("correspondent", "administrator"), 
     updateAdmissionFormStatus
+);
+
+// Admin Update Form Details (via Query Params)
+schoolAdmissionFormRoutes.put(
+    '/details', 
+    multiRoleAuth("correspondent", "administrator"), 
+    updateAdmissionFormDetails
+);
+
+schoolAdmissionFormRoutes.patch(
+    '/:id/link-student', 
+    multiRoleAuth("correspondent", "administrator"), 
+    linkStudentToAdmissionForm
 );
 
 export default schoolAdmissionFormRoutes;
