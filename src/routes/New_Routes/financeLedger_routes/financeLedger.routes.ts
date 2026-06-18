@@ -1,6 +1,6 @@
 import express from "express";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
-import { getAllTransactions, getCollectedFeesStats, getFinanceStats, getFinanceTimeline, getFinanceTimelinev1, getOutstandingStats, getRecentFeeActivity, getTransactionById } from "../../../controllers/New_Controllers/financeLedger_controller/financeLedger.controller.js";
+import { getAllTransactions, getCollectedFeesStats, getFeeDuesStudentWise, getFinanceStats, getFinanceTimeline, getFinanceTimelinev1, getOutstandingStats, getRecentFeeActivity, getTransactionById } from "../../../controllers/New_Controllers/financeLedger_controller/financeLedger.controller.js";
 // import { getAllTransactions, getFinanceStats, getFinanceTimeline, getOutstandingStats, getTransactionById } from "../../../Controllers/New_Controllers/financeLedger_controller/financeLedger.controller.js";
 
 const financeRoutes = express.Router();
@@ -24,5 +24,9 @@ financeRoutes.get("/outstanding", multiRoleAuth("correspondent", "administrator"
 
 financeRoutes.get("/v1/collected", multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"), getCollectedFeesStats);
 financeRoutes.get("/v1/student/recent-activity", multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"), getRecentFeeActivity);
+
+financeRoutes.get("/v1/class/fee-dues", multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"), getFeeDuesStudentWise);
+
+
 
 export default financeRoutes;

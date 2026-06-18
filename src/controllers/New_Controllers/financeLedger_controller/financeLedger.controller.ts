@@ -3,6 +3,8 @@ import { FinanceLedgerModel } from "../../../models/New_Model/financeLedger_mode
 import StudentRecordModel from "../../../models/New_Model/StudentModel/StudentRecordModel/studentRecord.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";
+import SectionModel from "../../../models/New_Model/SchoolModel/section.model.js";
+import ClassModel from "../../../models/New_Model/SchoolModel/classModel.model.js";
 
 export const createLedgerEntry = async ({
     schoolId,
@@ -713,5 +715,113 @@ export const getRecentFeeActivity = async (req: any, res: any) => {
     } catch (error: any) {
         console.error("Recent Activity Error:", error);
         res.status(500).json({ ok: false, message: "Error fetching recent activity" });
+    }
+};
+
+
+export const getFeeDuesStudentWise = async (req: any, res: Response) => {
+    try {
+        const { schoolId, academicYear, classId, sectionId } = req.query;
+
+        if (!schoolId || !academicYear) {
+            return res.status(400).json({ 
+                ok: false, 
+                message: "schoolId and academicYear are required." 
+            });
+        }
+
+        const matchStage: any = {
+            schoolId: new mongoose.Types.ObjectId(schoolId as string),
+            academicYear: academicYear as string,
+            isActive: true
+        };
+
+        if (classId) matchStage.classId = new mongoose.Types.ObjectId(classId as string);
+        if (sectionId) matchStage.sectionId = new mongoose.Types.ObjectId(sectionId as string);
+
+        const students = await StudentRecordModel.aggregate([
+            { $match: matchStage },
+            {
+                $addFields: {
+                    duesBreakdown: {
+                        $map: {
+                            input: { $objectToArray: { $ifNull: ["$duesv1", {}] } },
+                            as: "due",
+                            in: {
+                                feeType: "$$due.k",
+                                amount: "$$due.v"
+                            }
+                        }
+                    },
+                    totalDue: {
+                        $sum: {
+                            $map: {
+                                input: { $objectToArray: { $ifNull: ["$duesv1", {}] } },
+                                as: "due",
+                                in: { $max: ["$$due.v", 0] }
+                            }
+                        }
+                    }
+                }
+            },
+            // ❌ REMOVED: { $match: { totalDue: { $gt: 0 } } }  <-- this was killing zero-due students
+            {
+                $project: {
+                    _id: 0,
+                    studentId: 1,
+                    studentName: 1,
+                    rollNumber: 1,
+                    classId: 1,
+                    sectionId: 1,
+                    className: 1,
+                    sectionName: 1,
+                    totalDue: 1,
+                    duesBreakdown: 1
+                }
+            },
+            { $sort: { className: 1, sectionName: 1, totalDue: -1 } }
+        ]);
+
+        // Group by class+section — ALL students land here, due or not
+        const grouped: Record<string, any> = {};
+        for (const s of students) {
+            const key = `${s.classId?.toString()}-${s.sectionId?.toString()}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    classId: s.classId,
+                    sectionId: s.sectionId,
+                    className: s.className,
+                    sectionName: s.sectionName,
+                    classTotalDue: 0,       // starts at 0, only adds up if dues exist
+                    totalStudents: 0,
+                    studentsWithDues: 0,
+                    students: []
+                };
+            }
+            grouped[key].classTotalDue += s.totalDue;
+            grouped[key].totalStudents += 1;
+            if (s.totalDue > 0) grouped[key].studentsWithDues += 1;
+            grouped[key].students.push({
+                studentId: s.studentId,
+                studentName: s.studentName,
+                rollNumber: s.rollNumber,
+                totalDue: s.totalDue,           // 0 if no dues — still shows up
+                hasDues: s.totalDue > 0,        // handy flag for frontend badge/highlight
+                duesBreakdown: s.duesBreakdown  // empty array if no dues
+            });
+        }
+
+        const result = Object.values(grouped).sort(
+            (a: any, b: any) => b.classTotalDue - a.classTotalDue
+        );
+
+        return res.status(200).json({ ok: true, data: result });
+
+    } catch (error: any) {
+        console.error("Get Student-Wise Fee Dues Error:", error);
+        return res.status(500).json({ 
+            ok: false, 
+            message: "Failed to fetch student-wise fee dues." 
+        });
     }
 };
