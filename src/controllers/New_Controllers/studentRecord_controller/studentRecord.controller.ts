@@ -66,21 +66,21 @@ const getNextAlphanumericSequence = (currentSequence: string): string => {
     const trimmedSeq = currentSequence.trim();
 
     const match = trimmedSeq.match(/(.*?)(\d+)$/);
-    
+
     if (!match) {
         // If there are no numbers at the end (e.g., just "REC"), append "1"
         return `${trimmedSeq}1`;
     }
 
     const prefix = match[1];
-    const numStr =String(match[2]);
-    
+    const numStr = String(match[2]);
+
     // Increment the number
     const nextNum = parseInt(numStr, 10) + 1;
-    
+
     // Pad it back to the same length with leading zeros
     const paddedNum = String(nextNum).padStart(numStr.length, '0');
-    
+
     return `${prefix}${paddedNum}`;
 };
 
@@ -478,7 +478,7 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
 
         // ── 10.5. PROCESS BILL BOOK SEQUENCE ─────────────────────────────
         let assignedBillNo = null;
-        
+
         // Find the active bill book for this school & year
         const activeBillBook = await BillBookModel.findOne({
             schoolId,
@@ -487,13 +487,13 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
         }).session(session);
 
         if (activeBillBook && activeBillBook?.billNumber) {
-          const lastTransaction = await FeeTransactionModel.findOne({
+            const lastTransaction = await FeeTransactionModel.findOne({
                 schoolId,
                 academicYear: currentYear,
                 billNo: { $ne: null, $exists: true }
             })
-            .sort({ createdAt: -1 })
-            .session(session);
+                .sort({ createdAt: -1 })
+                .session(session);
 
             // 2. Decide which number to use based on timestamps
             if (lastTransaction && lastTransaction.createdAt > activeBillBook.updatedAt) {
@@ -878,9 +878,9 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             { session }
         );
 
-           // ── 10.5. PROCESS BILL BOOK SEQUENCE ─────────────────────────────
+        // ── 10.5. PROCESS BILL BOOK SEQUENCE ─────────────────────────────
         let assignedBillNo = null;
-        
+
         // Find the active bill book for this school & year
         const activeBillBook = await BillBookModel.findOne({
             schoolId,
@@ -891,13 +891,13 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         console.log("activeBill book", activeBillBook)
 
         if (activeBillBook && activeBillBook?.billNumber) {
-          const lastTransaction = await FeeTransactionModel.findOne({
+            const lastTransaction = await FeeTransactionModel.findOne({
                 schoolId,
                 academicYear: currentYear,
                 billNo: { $ne: null, $exists: true }
             })
-            .sort({ createdAt: -1 })
-            .session(session);
+                .sort({ createdAt: -1 })
+                .session(session);
 
             // 2. Decide which number to use based on timestamps
             if (lastTransaction && lastTransaction.createdAt > activeBillBook.updatedAt) {
@@ -922,9 +922,9 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             const uploadedProof = await processFiles(files);
 
             const newReceiptEntry = new FeeTransactionModel({
-                schoolId, studentId, recordId: studentRecord._id, 
+                schoolId, studentId, recordId: studentRecord._id,
                 academicYear: currentYear,
-                receiptNo, 
+                receiptNo,
                 billNo: assignedBillNo, // 🌟 Inject the fetched bill number here
                 paymentDate: new Date(), paymentMode: paymentMode.toLowerCase(),
                 amountPaid: payingAmount, allocation: receiptAllocationList, proofUpload: uploadedProof || [],
@@ -2406,7 +2406,7 @@ export const getAllStudentRecords = async (req: RoleBasedRequest, res: Response)
             query.sectionId = new mongoose.Types.ObjectId(sectionId);
         }
 
-        if(phone){
+        if (phone) {
             query.mandatory.mobileNumber = phone;
         }
 
@@ -2771,6 +2771,18 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 isRecordCreated: true
             };
         } else {
+
+
+            const feeConfig = await FeeStructureConfigModel.findOne({ schoolId })
+
+            // 2. Build the default fee map based on the dynamic feeHeads
+            // This creates an object like: { "Tuition Fee": 0, "Transport Fee": 0 }
+            const defaultFeeMap = feeConfig?.feeHeads?.reduce((acc: Record<string, number>, head: string) => {
+                acc[head] = 0;
+                return acc;
+            }, {}) || {}
+
+
             // --- SCENARIO B: NO Record (Virtual Ghost Record) ---
             responseData = {
                 _id: null, // Crucial flag for frontend (means "Not Enrolled for this Year")
@@ -2793,6 +2805,14 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 feeStructure: { admissionFee: 0, firstTermAmt: 0, secondTermAmt: 0, busFirstTermAmt: 0, busSecondTermAmt: 0 },
                 feePaid: { admissionFee: 0, firstTermAmt: 0, secondTermAmt: 0, busFirstTermAmt: 0, busSecondTermAmt: 0 },
                 dues: { admissionDues: 0, firstTermDues: 0, secondTermDues: 0, busfirstTermDues: 0, busSecondTermDues: 0 },
+
+
+                // 🌟 NEW DYNAMIC v1 FINANCIALS 🌟
+                // We spread the default map into new objects to ensure they don't share the same memory reference
+                feeStructurev1: { ...defaultFeeMap },
+                feePaidv1: { ...defaultFeeMap },
+                duesv1: { ...defaultFeeMap },
+
                 concession: { isApplied: false, type: null, value: 0, inAmount: 0, proof: null },
 
                 isActive: false, // Record is not active yet
