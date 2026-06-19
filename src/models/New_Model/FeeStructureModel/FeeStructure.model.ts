@@ -46,7 +46,7 @@ const FeeStructureSchema = new mongoose.Schema<IFeeStructure>({
     busSecondTermAmt: { type: Number, default: 0 },
   },
 
-  feeHeads: {
+  feeHeads: {   // use this dont use feeHead
     type: Map,
     of: Number,
     default: {},

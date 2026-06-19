@@ -2494,7 +2494,7 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
             sectionId,
             isActive,
             phone,
-            isBusApplicable,
+            // isBusApplicable,
             isFullyPaid,
             hasConcession,
             hasBusPoint
@@ -2537,7 +2537,7 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
         if (phone) postLookupMatch["recordData.mandatory.mobileNumber"] = phone;
 
         if (isActive !== undefined) postLookupMatch["recordData.isActive"] = isActive === 'true';
-        if (isBusApplicable !== undefined) postLookupMatch["recordData.isBusApplicable"] = isBusApplicable === 'true';
+        // if (isBusApplicable !== undefined) postLookupMatch["recordData.isBusApplicable"] = isBusApplicable === 'true';
         if (isFullyPaid !== undefined) postLookupMatch["recordData.isFullyPaid"] = isFullyPaid === 'true';
         if (hasConcession !== undefined) postLookupMatch["recordData.concession.isApplied"] = hasConcession === 'true';
         if (hasBusPoint !== undefined) {
@@ -2601,7 +2601,7 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
                 className: "$recordData.className",
                 sectionName: "$recordData.sectionName",
                 isActive: { $ifNull: ["$recordData.isActive", false] },
-                isBusApplicable: { $ifNull: ["$recordData.isBusApplicable", false] },
+                // isBusApplicable: { $ifNull: ["$recordData.isBusApplicable", false] },
                 isFullyPaid: { $ifNull: ["$recordData.isFullyPaid", false] },
                 hasConcession: { $ifNull: ["$recordData.concession.isApplied", false] }
             }
@@ -2816,7 +2816,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 concession: { isApplied: false, type: null, value: 0, inAmount: 0, proof: null },
 
                 isActive: false, // Record is not active yet
-                isBusApplicable: false,
+                // isBusApplicable: false,
                 isFullyPaid: false,
                 busPoint: null,
 
