@@ -3,7 +3,7 @@ import StudentNewModel from "../../../models/New_Model/StudentModel/studentNew.m
 import StudentRecordModel from "../../../models/New_Model/StudentModel/StudentRecordModel/studentRecord.model.js";
 import FeeTransactionModel from "../../../models/New_Model/FeeTransactionReceipt_model/feeTransactionReceipt.model.js";
 import FeeStructureModel from "../../../models/New_Model/FeeStructureModel/FeeStructure.model.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import ClassModel from "../../../models/New_Model/SchoolModel/classModel.model.js";
 import SectionModel from "../../../models/New_Model/SchoolModel/section.model.js";
 // import { uploadImageToS3 } from "../../../Utils/s3upload.js";

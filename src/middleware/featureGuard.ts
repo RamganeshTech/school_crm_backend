@@ -1,7 +1,7 @@
 // import { SchoolModel } from "../models/school.model.js";
 
 import type { NextFunction, Response } from "express";
-import SchoolModel from "../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../models/New_Model/SchoolModel/schoolModel.model.js";
 import type { RoleBasedRequest } from "../utils/types.js";
 
 type featureType = "attendance" | "studentRecord" | "expense" | "club" | "announcement" | "markReport"

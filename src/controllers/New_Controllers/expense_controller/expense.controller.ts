@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { ExpenseModel, type IExpense } from "../../../models/New_Model/expense_model/expense.model.js";
 import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 // import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import { createLedgerEntry } from "../financeLedger_controller/financeLedger.controller.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";

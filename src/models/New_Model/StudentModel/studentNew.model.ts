@@ -86,6 +86,7 @@ export interface IStudentNew extends Document {
     nonMandatory: IStudentNonMandatory;
     documents: IStudentUpload[]
     admissionRefId: Types.ObjectId | null;
+    profileStatus: "created" | "profile_pending" | "deactivated" | "completed"
     createdAt: Date;
     updatedAt: Date;
 }
@@ -185,7 +186,8 @@ const StudentNewSchema = new Schema<IStudentNew>({
     },
 
     admissionRefId: { type: mongoose.Schema.Types.ObjectId, ref: "AdmissionFormModel", default: null },
-    documents: { type: [uploadSchema], default: [] }
+    documents: { type: [uploadSchema], default: [] },
+    profileStatus: {type: String, default: "created"},
 
 }, { timestamps: true });
 

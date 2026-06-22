@@ -3,7 +3,7 @@
 
 import type { Response } from "express";
 import { ClubMainModel, ClubVideoModel } from "../../../models/New_Model/club_model/club.model.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { formatUploadData, processFilesClub } from "./club.controller.js";
@@ -151,7 +151,7 @@ export const deleteClubVideoFile = async (req: RoleBasedRequest, res: Response) 
         });
 
         res.status(200).json({
-            ok: true, 
+            ok: true,
             message: "File deleted successfully",
             data: updatedVideo
         });

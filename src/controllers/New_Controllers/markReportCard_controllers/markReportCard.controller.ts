@@ -1,13 +1,13 @@
 
 import type { Response } from "express";
 import type { RoleBasedRequest } from "../../../utils/types.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import MarkReportModel from "../../../models/New_Model/markReportCard_model/markReportCard.model.js";
 
 // ==========================================
 // 1. CREATE MARK REPORT
 // ==========================================
-export const createMarkReport = async (req:RoleBasedRequest, res:Response) => {
+export const createMarkReport = async (req: RoleBasedRequest, res: Response) => {
     try {
         let {
             schoolId,
@@ -63,7 +63,7 @@ export const createMarkReport = async (req:RoleBasedRequest, res:Response) => {
             data: newReport
         });
 
-    } catch (error:any) {
+    } catch (error: any) {
         console.error("Error creating mark report:", error);
         res.status(500).json({ ok: false, message: "Server error. Please try again later.", error: error.message });
     }
@@ -72,7 +72,7 @@ export const createMarkReport = async (req:RoleBasedRequest, res:Response) => {
 // ==========================================
 // 2. GET ALL MARK REPORTS (With Filters)
 // ==========================================
-export const getAllMarkReports = async (req:RoleBasedRequest, res:Response) => {
+export const getAllMarkReports = async (req: RoleBasedRequest, res: Response) => {
     try {
         const {
             schoolId,
@@ -87,7 +87,7 @@ export const getAllMarkReports = async (req:RoleBasedRequest, res:Response) => {
         }
 
         // Build dynamic query
-        const query:any = { schoolId };
+        const query: any = { schoolId };
 
         if (academicYear) query.academicYear = academicYear;
         if (classId) query.classId = classId;
@@ -109,7 +109,7 @@ export const getAllMarkReports = async (req:RoleBasedRequest, res:Response) => {
             data: reports
         });
 
-    } catch (error:any) {
+    } catch (error: any) {
         console.error("Error fetching mark reports:", error);
         res.status(500).json({ ok: false, message: "Server error. Please try again later.", error: error.message });
     }
@@ -118,7 +118,7 @@ export const getAllMarkReports = async (req:RoleBasedRequest, res:Response) => {
 // ==========================================
 // 3. UPDATE MARK REPORT
 // ==========================================
-export const updateMarkReport = async (req:RoleBasedRequest, res:Response) => {
+export const updateMarkReport = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { reportId } = req.params;
         const {
@@ -136,7 +136,7 @@ export const updateMarkReport = async (req:RoleBasedRequest, res:Response) => {
         }
 
         // Build the update object dynamically
-        const updateData:any = {};
+        const updateData: any = {};
 
         // Hierarchy and Tenancy updates (only if provided)
         if (classId !== undefined) updateData.classId = classId;
@@ -144,7 +144,7 @@ export const updateMarkReport = async (req:RoleBasedRequest, res:Response) => {
         if (studentId !== undefined) updateData.studentId = studentId;
         if (academicYear !== undefined) updateData.academicYear = academicYear;
 
-        
+
         if (subjects && Array.isArray(subjects)) updateData.subjects = subjects; // This replaces the old array with the new one
         if (remarks !== undefined) updateData.remarks = remarks;
         if (isAbsent !== undefined) updateData.isAbsent = isAbsent;
@@ -165,7 +165,7 @@ export const updateMarkReport = async (req:RoleBasedRequest, res:Response) => {
             data: updatedReport
         });
 
-    } catch (error:any) {
+    } catch (error: any) {
         console.error("Error updating mark report:", error);
         res.status(500).json({ ok: false, message: "Server error. Please try again later.", error: error.message });
     }
@@ -174,7 +174,7 @@ export const updateMarkReport = async (req:RoleBasedRequest, res:Response) => {
 // ==========================================
 // 4. DELETE MARK REPORT
 // ==========================================
-export const deleteMarkReport = async (req:RoleBasedRequest, res:Response) => {
+export const deleteMarkReport = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { reportId } = req.params;
 
@@ -193,7 +193,7 @@ export const deleteMarkReport = async (req:RoleBasedRequest, res:Response) => {
             message: "Mark report deleted successfully."
         });
 
-    } catch (error:any) {
+    } catch (error: any) {
         console.error("Error deleting mark report:", error);
         res.status(500).json({ ok: false, message: "Server error. Please try again later.", error: error.message });
     }
@@ -203,7 +203,7 @@ export const deleteMarkReport = async (req:RoleBasedRequest, res:Response) => {
 // ==========================================
 // 5. GET SINGLE MARK REPORT BY ID
 // ==========================================
-export const getMarkReportById = async (req:RoleBasedRequest, res:Response) => {
+export const getMarkReportById = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { reportId } = req.params;
 
@@ -227,7 +227,7 @@ export const getMarkReportById = async (req:RoleBasedRequest, res:Response) => {
             data: report
         });
 
-    } catch (error:any) {
+    } catch (error: any) {
         console.error("Error fetching single mark report:", error);
         res.status(500).json({ ok: false, message: "Server error. Please try again later.", error: error.message });
     }

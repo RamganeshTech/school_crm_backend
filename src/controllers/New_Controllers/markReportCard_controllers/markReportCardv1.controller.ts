@@ -3,7 +3,7 @@
 
 import type { Response } from "express";
 import MarkReportModel from "../../../models/New_Model/markReportCard_model/markReportCard.model.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 
 // ==========================================
@@ -13,7 +13,7 @@ export const createMarkReport = async (req: RoleBasedRequest, res: Response) => 
     try {
         let {
             schoolId,
-            classId, 
+            classId,
             sectionId,
             studentId,
             academicYear,
@@ -93,7 +93,7 @@ export const getAllMarkReports = async (req: RoleBasedRequest, res: Response) =>
         }
 
         // Build dynamic query
-        const query:any = { schoolId };
+        const query: any = { schoolId };
 
         if (academicYear) query.academicYear = academicYear;
         if (classId) query.classId = classId;
@@ -144,7 +144,7 @@ export const updateMarkReport = async (req: RoleBasedRequest, res: Response) => 
         }
 
         // Build the update object dynamically
-        const updateData:any = {};
+        const updateData: any = {};
 
         // Hierarchy and Tenancy updates (only if provided)
         if (classId !== undefined) updateData.classId = classId;
@@ -158,7 +158,7 @@ export const updateMarkReport = async (req: RoleBasedRequest, res: Response) => 
 
         // THE UPGRADE: Update the entire exam records array if provided
         if (examRecords && Array.isArray(examRecords)) {
-            updateData.examRecords = examRecords; 
+            updateData.examRecords = examRecords;
         }
 
         if (remarks !== undefined) updateData.remarks = remarks;
@@ -259,13 +259,13 @@ export const getMarkReportByIdV1 = async (req: RoleBasedRequest, res: Response) 
         }
 
         // 1. Try to find the existing report
-        let report = await MarkReportModel.findOne({ 
-            studentId, 
-            academicYear 
+        let report = await MarkReportModel.findOne({
+            studentId,
+            academicYear
         })
-        .populate("studentId", "studentName srId studentImage")
-        .populate("classId", "name className") // Adjust to match your schema
-        .populate("sectionId", "name");
+            .populate("studentId", "studentName srId studentImage")
+            .populate("classId", "name className") // Adjust to match your schema
+            .populate("sectionId", "name");
 
         // 2. If it exists, return it immediately
         if (report) {

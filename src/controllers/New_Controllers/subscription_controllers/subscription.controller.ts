@@ -1,10 +1,10 @@
 
 import type { Response } from "express";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 
 // PRE-DEFINED PACKAGES (Optional helper)
-const PACKAGES:any = {
+const PACKAGES: any = {
     basic: {
         studentRecord: true,
         attendance: false,

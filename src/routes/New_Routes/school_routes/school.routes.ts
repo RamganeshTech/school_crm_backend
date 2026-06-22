@@ -1,6 +1,6 @@
 import express from 'express'
 // import { upload } from '../Utils/s3upload'
-import { createSchool, deleteSchool, getAllSchools, getSchoolById, getSchoolSocialPlatforms, updateSchool, updateSchoolLogo, updateSocialPlatform } from '../../../controllers/New_Controllers/school_controllers/school.controllers.js';
+import { createSchool, deleteAcademicTermDates, deleteSchool, getAllSchools, getSchoolById, getSchoolSocialPlatforms, updateSchool, updateSchoolLogo, updateSocialPlatform, upsertAcademicTermDates } from '../../../controllers/New_Controllers/school_controllers/school.controllers.js';
 // import { upload } from '../../../Utils/s3upload.js';
 // import { multiRoleAuth } from '../../../middleware/multiRoleRequest.js';
 import { upload } from '../../../utils/s4UploadsNew.js';
@@ -48,7 +48,19 @@ schoolRoutes.get('/getschool/socialplatform/:id',
     getSchoolSocialPlatforms);
 
 
+//  academic term date config
 
+
+
+schoolRoutes.put('/update/academic-termdate/:id',
+    multiRoleAuth("correspondent", "administrator"),
+    upsertAcademicTermDates);
+
+
+
+schoolRoutes.delete('/delete/academic-termdate/:schoolId/:academicTermDateId',
+    multiRoleAuth("correspondent", "administrator"),
+    deleteAcademicTermDates);
 
 
 export default schoolRoutes;

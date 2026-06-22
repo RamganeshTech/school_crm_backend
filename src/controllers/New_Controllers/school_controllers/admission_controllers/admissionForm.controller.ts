@@ -2,7 +2,7 @@ import { type Response } from 'express';
 import mongoose from 'mongoose';
 import AdmissionBookModel from '../../../../models/New_Model/SchoolModel/admission_model/admissionBook.model.js';
 import AdmissionFormModel from '../../../../models/New_Model/SchoolModel/admission_model/admissionForm.model.js';
-import SchoolModel from '../../../../models/New_Model/SchoolModel/shoolModel.model.js';
+import SchoolModel from '../../../../models/New_Model/SchoolModel/schoolModel.model.js';
 import StudentNewModel from '../../../../models/New_Model/StudentModel/studentNew.model.js';
 
 // utils/sequenceUtils.ts
@@ -554,11 +554,11 @@ export const linkStudentToAdmissionForm = async (req: any, res: Response) => {
         if (isEmpty(mand.mobileNumber)) mand.mobileNumber = formToUpdate.mobileNumber;
         if (isEmpty(mand.address)) mand.address = formToUpdate.currentAddress;
         if (isEmpty(mand.motherTongue)) mand.motherTongue = formToUpdate.motherTongue;
-        
+
         // Map specific mapped fields (Form Terminology -> UDISE Terminology)
         // if (isEmpty(mand.educationNumber)) mand.educationNumber = formToUpdate.emisNumber; 
-        if (isEmpty(mand.socialCategory)) mand.socialCategory = formToUpdate.community; 
-        
+        if (isEmpty(mand.socialCategory)) mand.socialCategory = formToUpdate.community;
+
         // Map Non-Mandatory Fields
         // if (isEmpty(nonMand.previousResult)) nonMand.previousResult = formToUpdate.examinationPassed;
 

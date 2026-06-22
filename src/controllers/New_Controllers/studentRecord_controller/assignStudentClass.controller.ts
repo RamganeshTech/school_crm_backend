@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import StudentRecordModel from "../../../models/New_Model/StudentModel/StudentRecordModel/studentRecord.model.js";
 import StudentNewModel from "../../../models/New_Model/StudentModel/studentNew.model.js";
 import FeeStructureModel from "../../../models/New_Model/FeeStructureModel/FeeStructure.model.js";

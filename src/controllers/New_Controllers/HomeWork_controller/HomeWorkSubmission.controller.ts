@@ -1,6 +1,6 @@
 import type { Response } from "express";
 import HomeWorkSubmissionModel from "../../../models/New_Model/HomeWork_model/HomeWorkSubmission.model.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 
 export const submitHomeworkStatus = async (req: RoleBasedRequest, res: Response) => {
@@ -83,7 +83,7 @@ export const getAllHomeworkSubmissionsWithPaginations = async (req: RoleBasedReq
         const { homeworkId, studentId, status, subjectId } = req.query;
         const schoolId = req.user!.schoolId; // Always filter by the user's school
 
-        const filter:any = { schoolId };
+        const filter: any = { schoolId };
         if (homeworkId) filter.homeworkId = homeworkId;
         if (studentId) filter.studentId = studentId;
         if (subjectId) filter.subjectId = subjectId;
@@ -125,7 +125,7 @@ export const getAllHomeworkSubmissionsWithoutPaginations = async (req: RoleBased
         const { homeworkId, studentId, subjectId } = req.query;
         const schoolId = req.user!.schoolId; // Always filter by the user's school
 
-        const filter:any = { schoolId };
+        const filter: any = { schoolId };
         if (homeworkId) filter.homeworkId = homeworkId;
         if (studentId) filter.studentId = studentId;
         if (subjectId) filter.subjectId = subjectId;

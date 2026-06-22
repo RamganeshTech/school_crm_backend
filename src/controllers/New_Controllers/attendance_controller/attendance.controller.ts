@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import AttendanceModel from "../../../models/New_Model/attendance_model/attendance.model.js";
 import StudentRecordModel from "../../../models/New_Model/StudentModel/StudentRecordModel/studentRecord.model.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
@@ -334,12 +334,12 @@ export const getStudentAttendanceHistory = async (req: RoleBasedRequest, res: Re
         // Use Custom Range if provided
         if (startDate && endDate) {
             dateFilter = {
-                date: { 
-                    $gte: new Date(new Date(startDate as string).setUTCHours(0, 0, 0, 0)), 
-                    $lte: new Date(new Date(endDate as string).setUTCHours(23, 59, 59, 999)) 
+                date: {
+                    $gte: new Date(new Date(startDate as string).setUTCHours(0, 0, 0, 0)),
+                    $lte: new Date(new Date(endDate as string).setUTCHours(23, 59, 59, 999))
                 }
             };
-        } 
+        }
         // Fallback to specific Month/Year
         else if (month && year) {
             const start = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
@@ -483,9 +483,9 @@ export const getStudentMonthlyTrends = async (req: any, res: Response) => {
             { $match: { "records.studentId": objectId } },
             {
                 $group: {
-                    _id: { 
-                        year: { $year: "$date" }, 
-                        month: { $month: "$date" } 
+                    _id: {
+                        year: { $year: "$date" },
+                        month: { $month: "$date" }
                     },
                     totalDays: { $sum: 1 },
                     // 🌟 Count each status separately
@@ -542,7 +542,7 @@ export const getStudentDayOfWeekPatterns = async (req: any, res: Response) => {
                     totalAbsences: { $sum: { $cond: [{ $eq: ["$records.status", "absent"] }, 1, 0] } },
                     totalLates: { $sum: { $cond: [{ $eq: ["$records.status", "late"] }, 1, 0] } },
                     // 🌟 Added Half-Day counting logic
-                    totalHalfDays: { $sum: { $cond: [{ $eq: ["$records.status", "half-day"] }, 1, 0] } } 
+                    totalHalfDays: { $sum: { $cond: [{ $eq: ["$records.status", "half-day"] }, 1, 0] } }
                 }
             },
             { $sort: { "_id.dayOfWeek": 1 } }
@@ -550,7 +550,7 @@ export const getStudentDayOfWeekPatterns = async (req: any, res: Response) => {
 
         // Map MongoDB Day IDs to String Labels for the Frontend
         const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        
+
         const formattedPatterns = patterns.map(p => ({
             day: daysOfWeek[p._id.dayOfWeek - 1],
             dayIndex: p._id.dayOfWeek,
@@ -805,12 +805,12 @@ export const getAcademicYearLeaderboards = async (req: RoleBasedRequest, res: Re
                     rollNumber: { $max: "$records.rollNumber" },
                     classId: { $first: "$classId" },
                     sectionId: { $first: "$sectionId" },
-                    
+
                     presentCount: { $sum: { $cond: [{ $eq: ["$records.status", "present"] }, 1, 0] } },
                     absentCount: { $sum: { $cond: [{ $eq: ["$records.status", "absent"] }, 1, 0] } },
                     lateCount: { $sum: { $cond: [{ $eq: ["$records.status", "late"] }, 1, 0] } },
                     halfDayCount: { $sum: { $cond: [{ $eq: ["$records.status", "half-day"] }, 1, 0] } },
-                    totalDaysEvaluated: { $sum: 1 } 
+                    totalDaysEvaluated: { $sum: 1 }
                 }
             },
 
@@ -845,11 +845,11 @@ export const getAcademicYearLeaderboards = async (req: RoleBasedRequest, res: Re
             // Step D: Calculate the "Effective Attendance" metric
             {
                 $addFields: {
-                    effectivePresent: { 
+                    effectivePresent: {
                         $add: [
-                            "$presentCount", 
-                            { $multiply: ["$halfDayCount", 0.5] } 
-                        ] 
+                            "$presentCount",
+                            { $multiply: ["$halfDayCount", 0.5] }
+                        ]
                     }
                 }
             },
@@ -895,12 +895,12 @@ export const getAcademicYearLeaderboards = async (req: RoleBasedRequest, res: Re
                         { $limit: 10 }
                     ],
                     mostLate: [
-                        { $match: { lateCount: { $gt: 0 } } }, 
+                        { $match: { lateCount: { $gt: 0 } } },
                         { $sort: { lateCount: -1, attendancePercentage: 1 } },
                         { $limit: 10 }
                     ],
                     mostHalfDays: [
-                        { $match: { halfDayCount: { $gt: 0 } } }, 
+                        { $match: { halfDayCount: { $gt: 0 } } },
                         { $sort: { halfDayCount: -1 } },
                         { $limit: 10 }
                     ]
@@ -916,10 +916,10 @@ export const getAcademicYearLeaderboards = async (req: RoleBasedRequest, res: Re
 
     } catch (error: any) {
         console.error("Yearly Attendance Leaderboard Error:", error);
-        res.status(500).json({ 
-            ok: false, 
-            message: "Failed to generate leaderboards", 
-            error: error.message 
+        res.status(500).json({
+            ok: false,
+            message: "Failed to generate leaderboards",
+            error: error.message
         });
     }
 };

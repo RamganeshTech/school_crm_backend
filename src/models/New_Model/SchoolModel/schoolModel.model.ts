@@ -1,43 +1,49 @@
 import mongoose, { Schema, Document, Types, model } from "mongoose";
 
 export interface ISchoolUpload {
-  type: "image" | "pdf";
-  key?: string;
-  url?: string;
-  originalName?: string;
-  uploadedAt: Date;
+    type: "image" | "pdf";
+    key?: string;
+    url?: string;
+    originalName?: string;
+    uploadedAt: Date;
 }
 
 export interface ISchoolSubscription {
-  planName: "basic" | "standard" | "premium" | "custom" | null;
-  modules: {
-    attendance: boolean;
-    studentRecord: boolean;
-    expense: boolean;
-    club: boolean;
-    announcement: boolean;
-  };
-  validUntil: Date | null;
+    planName: "basic" | "standard" | "premium" | "custom" | null;
+    modules: {
+        attendance: boolean;
+        studentRecord: boolean;
+        expense: boolean;
+        club: boolean;
+        announcement: boolean;
+    };
+    validUntil: Date | null;
 }
 
 export interface ISchool extends Document {
-  name: string;
-  schoolCode: string;
-  email?: string;
-  phoneNo?: string;
-  address?: string;
-  currentAcademicYear?: string | null;
-  logo: ISchoolUpload | null;
-  subscription: ISchoolSubscription;
-  isActive: boolean;
-  socialPlatform: {
-    facebook?: string | null;
-    linkedin?: string | null;
-    instagram?: string | null;
-    youtube?: string | null;
-  };
-  createdAt: Date;
-  updatedAt: Date;
+    name: string;
+    schoolCode: string;
+    email?: string;
+    phoneNo?: string;
+    address?: string;
+    currentAcademicYear?: string | null;
+    logo: ISchoolUpload | null;
+    subscription: ISchoolSubscription;
+    isActive: boolean;
+    socialPlatform: {
+        facebook?: string | null;
+        linkedin?: string | null;
+        instagram?: string | null;
+        youtube?: string | null;
+    };
+    academicTermDates: {
+        academicYear: String,  // e.g., "2025-2026"
+        firstTermDate: Date | null
+        secondTermDate: Date | null
+        thirdTermDate: Date | null
+    }[]
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 // const uploadSchema = new Schema({
@@ -74,6 +80,13 @@ const subscriptionSchema = new Schema<ISchoolSubscription>({
     validUntil: { type: Date, default: null } // Optional: For expiry
 })
 
+const termTimelineSchema = new Schema({
+    academicYear: { type: String, required: true }, // e.g., "2025-2026"
+    firstTermDate: { type: Date, default: null },
+    secondTermDate: { type: Date, default: null },
+    thirdTermDate: { type: Date, default: null }
+}, { _id: true });
+
 
 const schoolSchema = new Schema<ISchool>(
     {
@@ -100,7 +113,8 @@ const schoolSchema = new Schema<ISchool>(
             linkedin: { type: String, default: null },
             instagram: { type: String, default: null },
             youtube: { type: String, default: null },
-        }
+        },
+        academicTermDates: { type: [termTimelineSchema], default: [] },
     },
     { timestamps: true }
 );
@@ -149,7 +163,7 @@ schoolSchema.pre("save", async function (next) {
         this.schoolCode = `SCH-${sequenceString}-${dateSuffix}`;
 
         next();
-    } catch (error:any) {
+    } catch (error: any) {
         next(error);
     }
 });

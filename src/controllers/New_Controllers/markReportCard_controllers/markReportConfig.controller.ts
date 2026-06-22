@@ -5,7 +5,7 @@
 
 import type { Response } from "express";
 import type { RoleBasedRequest } from "../../../utils/types.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import MarkReportConfigModel from "../../../models/New_Model/markReportCard_model/markReportConfig.model.js";
 
 // ==========================================
@@ -42,9 +42,9 @@ export const createMarkReportConfig = async (req: RoleBasedRequest, res: Respons
         });
 
         if (existingConfig) {
-            return res.status(409).json({ 
-                ok: false, 
-                message: "A report configuration already exists for this class and academic year. Please update the existing one instead." 
+            return res.status(409).json({
+                ok: false,
+                message: "A report configuration already exists for this class and academic year. Please update the existing one instead."
             });
         }
 

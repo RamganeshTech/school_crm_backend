@@ -2,7 +2,7 @@ import UserModel from "../../../models/New_Model/UserModel/userModel.model.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { isValidEmail, isValidPhone } from "../../../utils/basicValidation.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 // import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import StudentNewModel from "../../../models/New_Model/StudentModel/studentNew.model.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
@@ -792,7 +792,7 @@ export const requestPasswordReset = async (req: RoleBasedRequest, res: Response)
     if (!user) {
       return res.status(200).json({
         ok: true,
-                message: "If an account with that email exists, a password reset link has been sent."
+        message: "If an account with that email exists, a password reset link has been sent."
       });
     }
 

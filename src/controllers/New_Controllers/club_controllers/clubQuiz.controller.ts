@@ -1,5 +1,5 @@
 import ClubQuizModel from "../../../models/New_Model/club_model/ClubQuiz.model.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 // import genAI from "../../../Config/geminiConfig.js";
 import { ClubVideoModel, type IUpload } from "../../../models/New_Model/club_model/club.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
@@ -223,7 +223,7 @@ export const createQuizWithAI = async (req: RoleBasedRequest, res: Response) => 
             classId,
             sectionId,
             academicYear,
-            numberOfQuestions = 10, 
+            numberOfQuestions = 10,
             pdfId
 
         } = req.body;
@@ -232,7 +232,7 @@ export const createQuizWithAI = async (req: RoleBasedRequest, res: Response) => 
 
         // return res.send("done")
 
-        if(!pdfId){
+        if (!pdfId) {
             return res.status(404).json({ ok: false, message: "pdfId is required" });
         }
 

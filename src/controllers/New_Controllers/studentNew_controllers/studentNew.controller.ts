@@ -16,6 +16,40 @@ import { archiveData } from "../deleteArchieve_controller/deleteArchieve.control
 import StudentProfileUpdate from "../../../models/New_Model/StudentModel/studentProfileUpdate_model/studentProfileUpdate.model.js";
 import mongoose, { Types } from "mongoose";
 
+
+// 🌟 HELPER: Evaluates the completeness of a student's profile
+const evaluateProfileStatus = (studentData: any) => {
+    // Fields to ignore when checking for completeness
+    const excludedFields = ['gender', 'dob', 'mobileNumber', 'age'];
+
+    let hasEmptyFields = false;
+    let hasSomeData = false;
+
+    const checkCompleteness = (dataObj: any) => {
+        if (!dataObj) {
+            hasEmptyFields = true;
+            return;
+        }
+        for (const [key, value] of Object.entries(dataObj)) {
+            if (excludedFields.includes(key)) continue;
+
+            if (value === null || value === undefined || value === "") {
+                hasEmptyFields = true; // Found an empty field
+            } else {
+                hasSomeData = true; // Found at least some data
+            }
+        }
+    };
+
+    checkCompleteness(studentData.mandatory);
+    checkCompleteness(studentData.nonMandatory);
+
+    if (!hasSomeData) return "created";
+    if (hasEmptyFields) return "profile_pending";
+    return "completed";
+};
+
+
 // ==========================================
 export const createStudentProfile = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -102,6 +136,9 @@ export const createStudentProfile = async (req: RoleBasedRequest, res: Response)
             currentSectionId: null,
             isActive: true
         });
+
+
+        newStudent.profileStatus = evaluateProfileStatus(newStudent);
 
         // 4. Save (Triggers Pre-Save Hook for SR-ID)
         await newStudent.save();
@@ -225,11 +262,44 @@ export const updateStudent = async (req: RoleBasedRequest, res: Response) => {
         if (updates.srId) delete updates.srId;
         if (updates.schoolId) delete updates.schoolId;
 
-        // Handle Nested Objects (Mandatory/NonMandatory)
-        // If you send partial data (e.g. only fatherName), we need to merge it, 
-        // otherwise Mongoose might overwrite the whole object if not careful.
-        // However, usually with $set and dot notation in frontend (mandatory.fatherName) it works best.
-        // For simplicity here, we assume the frontend sends the structure correctly.
+        // // Handle Nested Objects (Mandatory/NonMandatory)
+        // // If you send partial data (e.g. only fatherName), we need to merge it, 
+        // // otherwise Mongoose might overwrite the whole object if not careful.
+        // // However, usually with $set and dot notation in frontend (mandatory.fatherName) it works best.
+        // // For simplicity here, we assume the frontend sends the structure correctly.
+
+        // const updatedStudent = await StudentNewModel.findByIdAndUpdate(
+        //     id,
+        //     { $set: updates },
+        //     { new: true, runValidators: true }
+        // );
+
+        // if (!updatedStudent) {
+        //     return res.status(404).json({ ok: false, message: "Student not found" });
+        // }
+
+
+
+        // 🌟 FETCH EXISTING DOC FIRST — needed to merge nested objects safely
+        const existingStudent = await StudentNewModel.findById(id);
+        if (!existingStudent) {
+            return res.status(404).json({ ok: false, message: "Student not found" });
+        }
+
+        // 🌟 MERGE instead of replace, so partial updates don't wipe other fields
+        if (updates.mandatory) {
+            updates.mandatory = { ...(existingStudent.mandatory || {}), ...updates.mandatory };
+        }
+        if (updates.nonMandatory) {
+            updates.nonMandatory = { ...(existingStudent.nonMandatory || {}), ...updates.nonMandatory };
+        }
+
+        // 🌟 Build the post-update shape WITHOUT a second DB round trip, to evaluate status
+        const mergedForStatusCheck = {
+            mandatory: updates.mandatory ?? existingStudent.mandatory,
+            nonMandatory: updates.nonMandatory ?? existingStudent.nonMandatory,
+        };
+        updates.profileStatus = evaluateProfileStatus(mergedForStatusCheck);
 
         const updatedStudent = await StudentNewModel.findByIdAndUpdate(
             id,
@@ -240,6 +310,7 @@ export const updateStudent = async (req: RoleBasedRequest, res: Response) => {
         if (!updatedStudent) {
             return res.status(404).json({ ok: false, message: "Student not found" });
         }
+
 
         // Check if a mobile number was provided in mandatory details
         const parentMobile = updates.mandatory?.mobileNumber;
@@ -935,6 +1006,10 @@ export const reviewProfileUpdateRequest = async (req: RoleBasedRequest, res: Res
 
         studentDoc.markModified('mandatory');
         studentDoc.markModified('nonMandatory');
+
+        studentDoc.profileStatus = evaluateProfileStatus(studentDoc);
+
+
         await studentDoc.save({ session });
 
         // Update verification request ledger document

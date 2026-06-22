@@ -3,13 +3,14 @@
 // 1. CREATE A NEW SCHOOL
 
 import type { Response } from "express";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import { isValidEmail, isValidPhone } from "../../../utils/basicValidation.js";
 // import { uploadImageToS3 } from "../../../Utils/s3upload.js";
 import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import mongoose from "mongoose";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 // import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 
@@ -99,7 +100,7 @@ export const createSchool = async (req: RoleBasedRequest, res: Response) => {
 
 
     let uploadedLogo = null
-  
+
 
     if (file) {
       const uploadResult = await uploadFileToS3New(file);
@@ -195,7 +196,7 @@ export const updateSchool = async (req: RoleBasedRequest, res: Response) => {
     const { name, email, phoneNo, address, currentAcademicYear } = req.body;
 
 
-    const updates:any = {};
+    const updates: any = {};
 
     if (name) updates.name = name.trim();
     if (email) updates.email = email.trim();
@@ -478,5 +479,121 @@ export const getSchoolSocialPlatforms = async (req: RoleBasedRequest, res: Respo
   } catch (error: any) {
     console.error("Error fetching school social platforms:", error);
     return res.status(500).json({ message: "Internal Server Error", error: error.message, ok: false });
+  }
+};
+
+
+
+
+export const upsertAcademicTermDates = async (req: RoleBasedRequest, res: Response) => {
+  try {
+
+
+    const { id } = req.params
+    const { academicYear, firstTermDate, secondTermDate, thirdTermDate } = req.body;
+
+    if (!id || !academicYear) {
+      return res.status(400).json({
+        ok: false,
+        message: "schoolId and academicYear are required."
+      });
+    }
+
+    const schoolObjId = new mongoose.Types.ObjectId(id as string);
+
+    // 🌟 STEP 1: Attempt to UPDATE if the academicYear already exists
+    const updatedSchool = await SchoolModel.findOneAndUpdate(
+      {
+        _id: schoolObjId,
+        "academicTermDates.academicYear": academicYear
+      },
+      {
+        $set: {
+          "academicTermDates.$.firstTermDate": firstTermDate || null,
+          "academicTermDates.$.secondTermDate": secondTermDate || null,
+          "academicTermDates.$.thirdTermDate": thirdTermDate || null,
+        }
+      },
+      { new: true }
+    );
+
+    // 🌟 STEP 2: If it didn't exist (update failed), PUSH a new record
+    if (!updatedSchool) {
+      const newSchoolData = await SchoolModel.findByIdAndUpdate(
+        schoolObjId,
+        {
+          $push: {
+            academicTermDates: {
+              academicYear,
+              firstTermDate: firstTermDate || null,
+              secondTermDate: secondTermDate || null,
+              thirdTermDate: thirdTermDate || null
+            }
+          }
+        },
+        { new: true }
+      );
+
+      if (!newSchoolData) {
+        return res.status(404).json({ ok: false, message: "School not found." });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        message: "Term dates created successfully.",
+        data: newSchoolData.academicTermDates
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      message: "Term dates updated successfully.",
+      data: updatedSchool.academicTermDates
+    });
+
+  } catch (error: any) {
+    console.error("Upsert Term Dates Error:", error);
+    return res.status(500).json({ ok: false, message: "Failed to save term dates." });
+  }
+};
+
+
+export const deleteAcademicTermDates = async (req: RoleBasedRequest, res: Response) => {
+  try {
+    const { schoolId, academicTermDateId } = req.params; // Usually passed as query params for DELETE requests
+
+    if (!schoolId || !academicTermDateId) {
+      return res.status(400).json({
+        ok: false,
+        message: "schoolId and academicYear are required."
+      });
+    }
+
+    const schoolObjId = new mongoose.Types.ObjectId(schoolId as string);
+
+    // 🌟 USE $pull to remove the specific object from the array
+    const updatedSchool = await SchoolModel.findByIdAndUpdate(
+      schoolObjId,
+      {
+        $pull: {
+          academicTermDates: { _id: academicTermDateId as string }
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedSchool) {
+      return res.status(404).json({ ok: false, message: "School not found." });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      message: `Term dates deleted successfully.`,
+      data: updatedSchool.academicTermDates
+    });
+
+  } catch (error: any) {
+    console.error("Delete Term Dates Error:", error);
+    return res.status(500).json({ ok: false, message: "Failed to delete term dates." });
   }
 };

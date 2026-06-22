@@ -1,6 +1,6 @@
 import { type Response } from 'express';
 import mongoose from 'mongoose';
-import SchoolModel from '../../../../models/New_Model/SchoolModel/shoolModel.model.js';
+import SchoolModel from '../../../../models/New_Model/SchoolModel/schoolModel.model.js';
 import AdmissionBookModel from '../../../../models/New_Model/SchoolModel/admission_model/admissionBook.model.js';
 // import AdmissionBookModel from '../models/AdmissionBookModel'; // Adjust path
 // import SchoolModel from '../models/SchoolModel'; // Adjust path
@@ -73,7 +73,7 @@ export const createAdmissionBook = async (req: any, res: Response) => {
 export const getAllAdmissionBooks = async (req: any, res: Response) => {
     try {
         const { schoolId } = req.params;
-        
+
         // const school = await SchoolModel.findById(schoolId);
         // if (!school) return res.status(404).json({ ok: false, message: "School not found." });
 
@@ -195,7 +195,7 @@ export const editFormNumber = async (req: any, res: Response) => {
 export const deleteAdmissionBook = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
-        
+
         const bookToDelete = await AdmissionBookModel.findById(id);
         if (!bookToDelete) {
             return res.status(404).json({ ok: false, message: "Admission Book not found." });
@@ -203,9 +203,9 @@ export const deleteAdmissionBook = async (req: any, res: Response) => {
 
         // Guardrail: Never allow deletion of an actively running sequence
         if (bookToDelete.isActive) {
-            return res.status(400).json({ 
-                ok: false, 
-                message: "Cannot delete an active Admission Book. Please deactivate it or activate another book first." 
+            return res.status(400).json({
+                ok: false,
+                message: "Cannot delete an active Admission Book. Please deactivate it or activate another book first."
             });
         }
 

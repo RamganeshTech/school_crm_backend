@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import { AnnouncementModel } from "../../../models/New_Model/announcement_model/announcement.model.js";
 // import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import StudentNewModel from "../../../models/New_Model/StudentModel/studentNew.model.js";
@@ -467,7 +467,7 @@ export const updateAnnouncementText = async (req: RoleBasedRequest, res: Respons
                 }
             }
             // Normalize
-            parsedAudience = parsedAudience.map((a:string) => a.toLowerCase());
+            parsedAudience = parsedAudience.map((a: string) => a.toLowerCase());
         }
 
 
@@ -557,7 +557,7 @@ export const updateAnnouncementText = async (req: RoleBasedRequest, res: Respons
 export const addAnnouncementAttachments = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { id } = req.params;
-       
+
 
         // 2. Check Files
         if (!req.files || req.files.length === 0) {
@@ -618,7 +618,7 @@ export const addAnnouncementAttachments = async (req: RoleBasedRequest, res: Res
 export const deleteAnnouncementAttachment = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { id, fileId } = req.params;
-       
+
         if (!fileId) {
             return res.status(400).json({ ok: false, message: "fileId is required" });
         }
@@ -672,7 +672,7 @@ export const deleteAnnouncementAttachment = async (req: RoleBasedRequest, res: R
 export const deleteAnnouncement = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { id } = req.params;
-       
+
 
         // 2. Soft Delete (Update Flag)
         const updated: any = await AnnouncementModel.findByIdAndDelete(

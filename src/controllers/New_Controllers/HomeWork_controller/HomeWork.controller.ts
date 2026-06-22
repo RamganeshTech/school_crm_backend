@@ -2,7 +2,7 @@ import type { Response } from "express";
 import HomeworkModel from "../../../models/New_Model/HomeWork_model/HomeWork.model.js";
 import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 
 
 
@@ -155,8 +155,8 @@ export const deleteHomeworkAttachment = async (req: RoleBasedRequest, res: Respo
 
 export const getAllHomework = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { schoolId, classId, sectionId, page = 1, limit = 10 , academicYear} = req.query;
-        const query = { schoolId, classId, sectionId: sectionId || null , academicYear};
+        const { schoolId, classId, sectionId, page = 1, limit = 10, academicYear } = req.query;
+        const query = { schoolId, classId, sectionId: sectionId || null, academicYear };
 
         const data = await HomeworkModel.find(query)
             .sort({ homeworkDate: -1 })

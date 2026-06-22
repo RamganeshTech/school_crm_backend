@@ -1,7 +1,7 @@
 
 // import AcademicCalendarModel from "../../../models/New_Model/academicCalendar_model/academicCalendar.model.s";
 import type { Response } from "express";
-import SchoolModel from "../../../models/New_Model/SchoolModel/shoolModel.model.js";
+import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import AcademicCalendarModel from "../../../models/New_Model/academicCalendar_model/academicCalendar.model.js";
 
