@@ -621,6 +621,58 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
 
 // NEW VERSION 
 
+const TERM_KEYS = ["firstTerm", "secondTerm", "thirdTerm"] as const;
+type TermKey = typeof TERM_KEYS[number];
+
+/**
+ * Computes feeStatus ("paid" | "unpaid" | null) using the head→term mapping
+ * from FeeStructureConfig.feeHeads[].associatedTerm, checked against
+ * School.academicTermDates[] term start dates and the student's duesv1 Map.
+ */
+export const computeFeeStatus = (
+    feeHeadsConfig: { feeHead: string; associatedTerm: string | null; isTerm: boolean }[],
+    duesMap: Map<string, number> | Record<string, number>,
+    academicTermDates: any[], // schoolDoc.academicTermDates
+    academicYear: string
+): string | null => {
+    const yearEntry = academicTermDates?.find((t: any) => t.academicYear === academicYear);
+    if (!yearEntry) return null; // no term config for this year — can't evaluate
+
+    const getDue = (head: string): number =>
+        Number((duesMap as any).get?.(head) ?? (duesMap as any)[head] ?? 0);
+
+    let anyTermActive = false;
+    let anyActiveTermUnpaid = false;
+
+    for (const termKey of TERM_KEYS) {
+        const termStartDate = yearEntry[termKey];
+        if (!termStartDate) continue; // this term isn't configured for the year
+
+        const today = new Date();
+        const isActive = new Date(termStartDate) <= today;
+        if (!isActive) continue; // term hasn't started — skip
+
+        anyTermActive = true;
+
+        // heads belonging to this term (excluding non-term heads per your decision)
+        const headsForThisTerm = feeHeadsConfig
+            .filter((h) => h.isTerm && h.associatedTerm === termKey)
+            .map((h) => h.feeHead);
+
+        for (const head of headsForThisTerm) {
+            if (getDue(head) > 0) {
+                anyActiveTermUnpaid = true;
+                break;
+            }
+        }
+
+        if (anyActiveTermUnpaid) break;
+    }
+
+    if (!anyTermActive) return null; // no term has started yet — nothing to evaluate
+    return anyActiveTermUnpaid ? "unpaid" : "paid";
+};
+
 export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Response) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -631,6 +683,7 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             amount, paymentMode, cashDenominations, referenceNumber,
             bankName, chequeDate, remarks,
             manualDueAllocation, paidHeads, newOld,
+            academicYear,
             // isBusApplicable,
             busPoint,
         } = req.body;
@@ -659,6 +712,13 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             return res.status(400).json({ ok: false, message: "newOld is required — must be 'new' or 'old'" });
         }
 
+        if (!academicYear) {
+            return res.status(400).json({
+                ok: false,
+                message: "academicYear is required",
+            });
+        }
+
         // ── 2. FETCH FEE CONFIG (source of truth for head names & order) ─
         const feeConfig = await FeeStructureConfigModel.findOne({ schoolId }).session(session);
         if (!feeConfig || !feeConfig.feeHeads || feeConfig.feeHeads.length === 0) {
@@ -667,11 +727,19 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         // const orderedHeads: string[] = feeConfig.feeHeads;
         const orderedHeads: string[] = feeConfig.feeHeads.map((headObj: any) => headObj?.feeHead);
 
+        const feeHeadsConfigRaw = feeConfig?.feeHeads;
 
+
+
+
+        let currentYear = academicYear
         // ── 3. GET ACADEMIC YEAR ─────────────────────────────────────────
         const schoolDoc = await SchoolModel.findById(schoolId).session(session);
         if (!schoolDoc) throw new Error("School not found");
-        const currentYear = schoolDoc.currentAcademicYear;
+
+        if (!academicYear) {
+            currentYear = schoolDoc.currentAcademicYear;
+        }
 
         // ── 4. CASH TALLY CHECK ──────────────────────────────────────────
         if (paymentMode.toLowerCase() === "cash") {
@@ -871,6 +939,15 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         }
 
         studentRecord.isFullyPaid = totalDuesRemaining <= 0;
+
+
+        // 🌟 NEW — term-aware fee status
+        studentRecord.feeStatus = computeFeeStatus(
+            feeHeadsConfigRaw,
+            studentRecord.duesv1,
+            schoolDoc.academicTermDates,
+            currentYear!
+        );
 
         // ── 10. SAVE STUDENT RECORD ──────────────────────────────────────
         await studentRecord.save({ session });
@@ -1239,6 +1316,14 @@ export const revertFeeTransactionV1 = async (req: RoleBasedRequest, res: Respons
         // const orderedHeads: string[] = feeConfig.feeHeads;
         const orderedHeads: string[] = feeConfig.feeHeads.map((headObj: any) => headObj?.feeHead);
 
+        // 🌟 NEW — keep raw config for term-mapping in status calc
+        const feeHeadsConfigRaw = feeConfig.feeHeads;
+
+        // 🌟 NEW — fetch school for academicTermDates
+        const schoolDoc: any = await SchoolModel.findById(studentRecord.schoolId).session(session);
+        if (!schoolDoc) throw new Error("School not found");
+
+
         // ── 7. REVERT ALLOCATION — SUBTRACT FROM feePaidv1 ──────────────
         // allocation shape unchanged: [{ feeHead: string, amount: number }]
         for (const item of transaction.allocation) {
@@ -1285,6 +1370,14 @@ export const revertFeeTransactionV1 = async (req: RoleBasedRequest, res: Respons
         }
 
         studentRecord.isFullyPaid = totalDuesRemaining <= 0;
+
+        // 🌟 NEW — recompute term-aware fee status after revert
+        studentRecord.feeStatus = computeFeeStatus(
+            feeHeadsConfigRaw,
+            studentRecord.duesv1,
+            schoolDoc.academicTermDates,
+            studentRecord.academicYear
+        );
 
         // ── 9. UPDATE TRANSACTION STATUS & REMARKS ───────────────────────
         transaction.status = status.toLowerCase();
@@ -1676,6 +1769,7 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
             newOld,
             busPoint,
             concessionValue: rawVal,
+            academicYear,
         } = req.body;
 
         const concessionValue = Number(rawVal);
@@ -1689,6 +1783,13 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
             return res.status(400).json({
                 ok: false,
                 message: "newOld is required — must be 'new' or 'old'",
+            });
+        }
+
+        if (!academicYear) {
+            return res.status(400).json({
+                ok: false,
+                message: "academicYear is required",
             });
         }
 
@@ -1711,9 +1812,12 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
 
 
         // ── 5. GET ACADEMIC YEAR ─────────────────────────────────────────
-        const schoolDoc = await SchoolModel.findById(schoolId).session(session);
-        if (!schoolDoc) throw new Error("School not found");
-        const currentYear = schoolDoc.currentAcademicYear;
+        let currentYear = academicYear
+        if (!academicYear) {
+            const schoolDoc = await SchoolModel.findById(schoolId).session(session);
+            if (!schoolDoc) throw new Error("School not found");
+            currentYear = schoolDoc.currentAcademicYear;
+        }
 
         // ── 6. FIND EXISTING RECORD ──────────────────────────────────────
         let studentRecord: any = await StudentRecordModel.findOne({
@@ -1962,7 +2066,7 @@ export const updateConcessionDetails = async (req: RoleBasedRequest, res: Respon
     try {
         const {
             schoolId, studentRecordId,
-            concessionType, concessionValue
+            concessionType, concessionValue, academicYear,
         } = req.body;
 
         // 1. BASIC VALIDATION
@@ -1970,11 +2074,23 @@ export const updateConcessionDetails = async (req: RoleBasedRequest, res: Respon
             throw new Error("Missing required fields (schoolId, studentRecordId, concessionType, concessionValue) ");
         }
 
+        if (!academicYear) {
+            return res.status(400).json({
+                ok: false,
+                message: "academicYear is required",
+            });
+        }
+
         const value = Number(concessionValue);
 
         // 2. GET RECORD
-        const schoolDoc = await SchoolModel.findById(schoolId).session(session);
-        const currentYear = schoolDoc!.currentAcademicYear;
+        let currentYear = academicYear
+        if (!academicYear) {
+
+
+            const schoolDoc = await SchoolModel.findById(schoolId).session(session);
+            currentYear = schoolDoc!.currentAcademicYear;
+        }
 
         let studentRecord = await StudentRecordModel.findOne({
             schoolId, _id: studentRecordId, academicYear: currentYear
@@ -2076,13 +2192,20 @@ export const updateConcessionDetailsV1 = async (req: RoleBasedRequest, res: Resp
     session.startTransaction();
 
     try {
-        const { schoolId, studentRecordId, concessionType, concessionValue } = req.body;
+        const { schoolId, studentRecordId, concessionType, concessionValue, academicYear } = req.body;
 
         // ── 1. BASIC VALIDATION ──────────────────────────────────────────
         if (!schoolId || !studentRecordId || !concessionType || concessionValue === undefined) {
             throw new Error(
                 "Missing required fields: schoolId, studentRecordId, concessionType, concessionValue"
             );
+        }
+
+        if (!academicYear) {
+            return res.status(400).json({
+                ok: false,
+                message: "academicYear is required",
+            });
         }
 
         const value = Number(concessionValue);
@@ -2103,9 +2226,16 @@ export const updateConcessionDetailsV1 = async (req: RoleBasedRequest, res: Resp
         const orderedHeads: string[] = feeConfig?.feeHeads?.map((headObj: any) => headObj?.feeHead);
 
         // ── 3. GET ACADEMIC YEAR ─────────────────────────────────────────
-        const schoolDoc = await SchoolModel.findById(schoolId).session(session);
-        if (!schoolDoc) throw new Error("School not found");
-        const currentYear = schoolDoc.currentAcademicYear;
+        // const schoolDoc = await SchoolModel.findById(schoolId).session(session);
+        // if (!schoolDoc) throw new Error("School not found");
+        // const currentYear = schoolDoc.currentAcademicYear;
+
+        let currentYear = academicYear
+        if (!academicYear) {
+            const schoolDoc = await SchoolModel.findById(schoolId).session(session);
+            if (!schoolDoc) throw new Error("School not found");
+            currentYear = schoolDoc!.currentAcademicYear;
+        }
 
         // ── 4. FIND STUDENT RECORD ───────────────────────────────────────
         const studentRecord: any = await StudentRecordModel.findOne({
@@ -2634,7 +2764,9 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
                 isActive: { $ifNull: ["$recordData.isActive", false] },
                 // isBusApplicable: { $ifNull: ["$recordData.isBusApplicable", false] },
                 isFullyPaid: { $ifNull: ["$recordData.isFullyPaid", false] },
-                hasConcession: { $ifNull: ["$recordData.concession.isApplied", false] }
+                hasConcession: { $ifNull: ["$recordData.concession.isApplied", false] },
+                // 🌟 NEW: Extract feeStatus, default to "unpaid" if record is missing
+                feeStatus: { $ifNull: ["$recordData.feeStatus", "unpaid"] }
             }
         });
 
@@ -2860,6 +2992,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 feeStructurev1: { ...defaultFeeMap },
                 feePaidv1: { ...defaultFeeMap },
                 duesv1: { ...defaultFeeMap },
+                feeStatus: "unpaid", // 🌟 Explicitly default to unpaid if no record exists
 
                 concession: { isApplied: false, type: null, value: 0, inAmount: 0, proof: null },
 

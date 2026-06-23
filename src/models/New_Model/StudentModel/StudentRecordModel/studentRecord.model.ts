@@ -170,7 +170,7 @@ const StudentRecordSchema = new mongoose.Schema<IStudentRecord>({
         type: String, default: null
     },
 
-    feeStatus: { type: String, default: null },
+    feeStatus: { type: String, default: "unpaid" },
 
 }, { timestamps: true });
 
