@@ -91,7 +91,7 @@ studentRecordRoutes.patch(
 
 studentRecordRoutes.post(
   "/collectfee",
-  multiRoleAuth("correspondent", "accountant"),
+  multiRoleAuth("correspondent", "accountant", "administrator"),
   featureGuard("studentRecord"),
   upload.array("files"),
   collectFeeAndManageRecord
@@ -101,7 +101,7 @@ studentRecordRoutes.post(
 
 studentRecordRoutes.post(
   "/v1/collectfee",
-  multiRoleAuth("correspondent", "accountant"),
+  multiRoleAuth("correspondent", "accountant", "administrator"),
   featureGuard("studentRecord"),
   upload.array("files"),
   collectFeeAndManageRecordV1
@@ -146,7 +146,7 @@ studentRecordRoutes.get(
 
 studentRecordRoutes.delete(
   "/deleterecord/:id",
-  multiRoleAuth("correspondent"), // Only Top-Level Access
+  multiRoleAuth("correspondent", "administrator"), // Only Top-Level Access
   featureGuard("studentRecord"),
   deleteStudentRecord
 );
@@ -154,7 +154,7 @@ studentRecordRoutes.delete(
 
 studentRecordRoutes.patch(
   "/togglestatus/:id",
-  multiRoleAuth("administrator", "correspondent", "accountant", "administrator"),
+  multiRoleAuth("administrator", "correspondent", "accountant", ),
   featureGuard("studentRecord"),
 
   toggleStudentRecordStatus
@@ -162,7 +162,7 @@ studentRecordRoutes.patch(
 
 studentRecordRoutes.patch(
   "/v1/togglestatus/:studentId",
-  multiRoleAuth("administrator", "correspondent", "accountant", "administrator"),
+  multiRoleAuth("administrator", "correspondent", "accountant"),
   featureGuard("studentRecord"),
 
   toggleStudentRecordStatusV1
@@ -172,7 +172,7 @@ studentRecordRoutes.patch(
 
 studentRecordRoutes.put(
   "/revertreceipt",
-  multiRoleAuth("correspondent", "accountant", "principal"),
+  multiRoleAuth("correspondent", "accountant", "principal", "administrator"),
   featureGuard("studentRecord"),
 
   revertFeeTransaction
@@ -182,7 +182,7 @@ studentRecordRoutes.put(
 
 studentRecordRoutes.put(
   "/v1/revertreceipt",
-  multiRoleAuth("correspondent", "accountant", "principal"),
+  multiRoleAuth("correspondent", "accountant", "principal", "administrator"),
   featureGuard("studentRecord"),
 
   revertFeeTransactionV1

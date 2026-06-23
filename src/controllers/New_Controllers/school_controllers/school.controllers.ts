@@ -490,7 +490,7 @@ export const upsertAcademicTermDates = async (req: RoleBasedRequest, res: Respon
 
 
     const { id } = req.params
-    const { academicYear, firstTermDate, secondTermDate, thirdTermDate } = req.body;
+    const { academicYear, firstTerm, secondTerm, thirdTerm } = req.body;
 
     if (!id || !academicYear) {
       return res.status(400).json({
@@ -509,9 +509,9 @@ export const upsertAcademicTermDates = async (req: RoleBasedRequest, res: Respon
       },
       {
         $set: {
-          "academicTermDates.$.firstTermDate": firstTermDate || null,
-          "academicTermDates.$.secondTermDate": secondTermDate || null,
-          "academicTermDates.$.thirdTermDate": thirdTermDate || null,
+          "academicTermDates.$.firstTerm": firstTerm || null,
+          "academicTermDates.$.secondTerm": secondTerm || null,
+          "academicTermDates.$.thirdTerm": thirdTerm || null,
         }
       },
       { new: true }
@@ -525,9 +525,9 @@ export const upsertAcademicTermDates = async (req: RoleBasedRequest, res: Respon
           $push: {
             academicTermDates: {
               academicYear,
-              firstTermDate: firstTermDate || null,
-              secondTermDate: secondTermDate || null,
-              thirdTermDate: thirdTermDate || null
+              firstTerm: firstTerm || null,
+              secondTerm: secondTerm || null,
+              thirdTerm: thirdTerm || null
             }
           }
         },

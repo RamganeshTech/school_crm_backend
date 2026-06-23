@@ -1,18 +1,30 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IFeeConfig extends Document {
-    schoolId: mongoose.Types.ObjectId;
-    feeHeads: string[];  // e.g., ["Tuition Fee", "Transport Fee", "Library Fee"]
-    createdAt: Date;
-    updatedAt: Date;
+  schoolId: mongoose.Types.ObjectId;
+  // feeHeads: string[];  // e.g., ["Tuition Fee", "Transport Fee", "Library Fee"]
+
+  feeHeads: {
+    feeHead: string
+    associatedTerm: string
+    isTerm: boolean
+  }[]
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 
+const feeHead = new Schema({
+  feeHead: { type: String, trim: true },
+  associatedTerm: { type: String, default: null },
+  isTerm: { type: Boolean, default: false }
+}, { _id: true })
+
 const FeeConfigSchema = new Schema<IFeeConfig>({
-    schoolId: { type: Schema.Types.ObjectId, ref: 'SchoolModel' , required:true},
-    
-    feeHeads: [{ type: String, trim: true }], 
-    
+  schoolId: { type: Schema.Types.ObjectId, ref: 'SchoolModel', required: true },
+
+  feeHeads: { type: [feeHead], default: [] },
+
 }, { timestamps: true });
 
 // 🌟 CRITICAL: Ensure a school can only have ONE config per academic year

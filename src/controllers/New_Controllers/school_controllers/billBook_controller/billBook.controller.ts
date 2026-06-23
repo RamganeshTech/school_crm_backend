@@ -1,7 +1,7 @@
 import { type Response } from 'express';
 import mongoose from 'mongoose';
 import SchoolModel from '../../../../models/New_Model/SchoolModel/schoolModel.model.js';
-import BillBookModel from '../../../../models/New_Model/SchoolModel/BillBook.model.js';
+import BillBookModel from '../../../../models/New_Model/SchoolModel/billBook_model/BillBook.model.js';
 // import BillBookModel from '../models/BillBookModel'; // Adjust path
 // import SchoolModel from '../models/SchoolModel'; // Adjust path
 

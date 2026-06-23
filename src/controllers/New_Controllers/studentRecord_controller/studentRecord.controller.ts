@@ -17,7 +17,8 @@ import { createLedgerEntry } from "../financeLedger_controller/financeLedger.con
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import FeeStructureConfigModel from "../../../models/New_Model/FeeStructureModel/feeStructureConfig.model.js";
-import BillBookModel from "../../../models/New_Model/SchoolModel/BillBook.model.js";
+import BillBookModel from "../../../models/New_Model/SchoolModel/billBook_model/BillBook.model.js";
+import BillBookRecordModel from "../../../models/New_Model/SchoolModel/billBook_model/BillRecord.model.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 
 
@@ -663,7 +664,9 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         if (!feeConfig || !feeConfig.feeHeads || feeConfig.feeHeads.length === 0) {
             throw new Error("No FeeStructureConfig found. Please configure fee heads first.");
         }
-        const orderedHeads: string[] = feeConfig.feeHeads;
+        // const orderedHeads: string[] = feeConfig.feeHeads;
+        const orderedHeads: string[] = feeConfig.feeHeads.map((headObj: any) => headObj?.feeHead);
+
 
         // ── 3. GET ACADEMIC YEAR ─────────────────────────────────────────
         const schoolDoc = await SchoolModel.findById(schoolId).session(session);
@@ -888,7 +891,7 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             isActive: true
         }).session(session);
 
-        console.log("activeBill book", activeBillBook)
+        // console.log("activeBill book", activeBillBook)
 
         if (activeBillBook && activeBillBook?.billNumber) {
             const lastTransaction = await FeeTransactionModel.findOne({
@@ -934,6 +937,30 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             });
 
             receipt = await newReceiptEntry.save({ session });
+
+            try {
+                // 🌟 NEW: Save to your permanent Bill Book Record ledger 
+                if (activeBillBook && assignedBillNo) {
+                    await BillBookRecordModel.create([{
+                        schoolId,
+                        academicYear: currentYear,
+                        billBookId: activeBillBook._id,
+                        studentId,
+                        feeReceiptId: receipt._id, // Linked directly to the transaction we just saved
+                        billNumber: assignedBillNo
+                    }], { session });
+
+                    // 🌟 NEW: Increment the tracker in the main BillBookModel so the 'next' view is accurate
+                    activeBillBook.billNumber = getNextAlphanumericSequence(assignedBillNo);
+                    await activeBillBook.save({ session });
+                }
+            } catch (error) {
+                // console.log("error", error);
+                console.log(
+                    "Bill Book Record Creation Failed:",
+                    error
+                );
+            }
 
             // ── 12. FINANCE LEDGER ───────────────────────────────────────
             const ledgerEntry = await createLedgerEntry({
@@ -1209,7 +1236,8 @@ export const revertFeeTransactionV1 = async (req: RoleBasedRequest, res: Respons
                 "No FeeStructureConfig found for this school. Cannot recalculate dues."
             );
         }
-        const orderedHeads: string[] = feeConfig.feeHeads;
+        // const orderedHeads: string[] = feeConfig.feeHeads;
+        const orderedHeads: string[] = feeConfig.feeHeads.map((headObj: any) => headObj?.feeHead);
 
         // ── 7. REVERT ALLOCATION — SUBTRACT FROM feePaidv1 ──────────────
         // allocation shape unchanged: [{ feeHead: string, amount: number }]
@@ -1678,7 +1706,9 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
                 "No FeeStructureConfig found for this school. Please configure fee heads first."
             );
         }
-        const orderedHeads: string[] = feeConfig.feeHeads;
+        // const orderedHeads: string[] = feeConfig.feeHeads;
+        const orderedHeads: string[] = feeConfig?.feeHeads?.map((headObj: any) => headObj?.feeHead);
+
 
         // ── 5. GET ACADEMIC YEAR ─────────────────────────────────────────
         const schoolDoc = await SchoolModel.findById(schoolId).session(session);
@@ -2069,7 +2099,8 @@ export const updateConcessionDetailsV1 = async (req: RoleBasedRequest, res: Resp
                 "No FeeStructureConfig found for this school. Please configure fee heads first."
             );
         }
-        const orderedHeads: string[] = feeConfig.feeHeads;
+        // const orderedHeads: string[] = feeConfig.feeHeads;
+        const orderedHeads: string[] = feeConfig?.feeHeads?.map((headObj: any) => headObj?.feeHead);
 
         // ── 3. GET ACADEMIC YEAR ─────────────────────────────────────────
         const schoolDoc = await SchoolModel.findById(schoolId).session(session);
@@ -2751,6 +2782,9 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
         if (studentRecord) {
             // --- SCENARIO A: Record Exists ---
             // Fetch All Receipts (Transactions) linked to this Ledger
+
+            console.log("if  condition ")
+
             const transactions = await FeeTransactionModel.find({
                 recordId: studentRecord._id
             })
@@ -2773,15 +2807,29 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
         } else {
 
 
+            console.log("else condition ")
             const feeConfig = await FeeStructureConfigModel.findOne({ schoolId })
+
+            // // 2. Build the default fee map based on the dynamic feeHeads
+            // // This creates an object like: { "Tuition Fee": 0, "Transport Fee": 0 }
+            // const defaultFeeMap = feeConfig?.feeHeads?.reduce((acc: Record<string, number>, head: string) => {
+            //     acc[head] = 0;
+            //     return acc;
+            // }, {}) || {}
+
 
             // 2. Build the default fee map based on the dynamic feeHeads
             // This creates an object like: { "Tuition Fee": 0, "Transport Fee": 0 }
-            const defaultFeeMap = feeConfig?.feeHeads?.reduce((acc: Record<string, number>, head: string) => {
-                acc[head] = 0;
-                return acc;
-            }, {}) || {}
+            const defaultFeeMap = feeConfig?.feeHeads?.reduce((acc: Record<string, number>, headObj: any) => {
+                // 🌟 Extract the string name from the object safely using optional chaining
+                const headName = headObj?.feeHead;
 
+                if (headName) {
+                    acc[headName] = 0;
+                }
+
+                return acc;
+            }, {}) || {};
 
             // --- SCENARIO B: NO Record (Virtual Ghost Record) ---
             responseData = {

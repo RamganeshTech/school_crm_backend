@@ -1,6 +1,6 @@
 import express from "express";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
-import { getFeeConfig, upsertFeeConfig } from "../../../controllers/New_Controllers/feeStructure_controller/feeStructureConfig.controller.js";
+import { getFeeConfig, upsertFeeConfig, upsertFeeConfigV1 } from "../../../controllers/New_Controllers/feeStructure_controller/feeStructureConfig.controller.js";
 // import { setFeeStructure, getFeeStructureByClass } from "../controllers/feeStructureController.js";
 // import { multiRoleAuth } from "../middlewares/authMiddleware.js";
 
@@ -11,6 +11,12 @@ feeStructureConfigRoutes.post(
   "/set/:schoolId",
   multiRoleAuth("correspondent", "administrator", "accountant"),
   upsertFeeConfig
+);
+
+feeStructureConfigRoutes.post(
+  "/v1/set/:schoolId",
+  multiRoleAuth("correspondent", "administrator", "accountant"),
+  upsertFeeConfigV1
 );
 
 // Endpoint: Get Fee Structure (Used for editing or during Admission)

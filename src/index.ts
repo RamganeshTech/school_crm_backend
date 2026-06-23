@@ -57,6 +57,7 @@ import schoolBillBookRoutes from './routes/New_Routes/school_routes/billBook_rou
 import schoolAdmissionBookRoutes from './routes/New_Routes/school_routes/admission_routes/admissionBook.route.js';
 import schoolAdmissionFormRoutes from './routes/New_Routes/school_routes/admission_routes/admissionForm.routes.js';
 import ProgressBarRoutes from './routes/New_Routes/progress_routes/progress.routes.js';
+import billBookRecordRoutes from './routes/New_Routes/school_routes/billBook_routes/billBookRecord.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -91,6 +92,7 @@ app.use('/api/attendance', attendanceRoutes)
 app.use('/api/fee/receipt', feeReceiptRoutes)
 
 app.use('/api/school-config/bill-book', schoolBillBookRoutes)
+app.use('/api/school-config/bill-record', billBookRecordRoutes)
 app.use('/api/school-config/admission-book', schoolAdmissionBookRoutes)
 app.use('/api/school/admission-form', schoolAdmissionFormRoutes)
 app.use('/api/school/progress-bar', ProgressBarRoutes)

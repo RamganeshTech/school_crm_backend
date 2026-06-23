@@ -237,7 +237,8 @@ export const setFeeStructureV1 = async (req: RoleBasedRequest, res: Response) =>
       });
     }
 
-    const allowedHeads: string[] = feeConfig.feeHeads;
+    // const allowedHeads: string[] = feeConfig.feeHeads;
+    const allowedHeads: string[] = feeConfig.feeHeads.map((headObj: any) => headObj?.feeHead);
 
     // 3. Validate that all submitted keys are in the config
     const submittedHeads = Object.keys(feeHead);
@@ -331,12 +332,13 @@ export const getFeeStructureByClassV1 = async (req: RoleBasedRequest, res: Respo
 
     const feeStructure = await FeeStructureModel.find({ schoolId, classId });
 
-    if (!feeStructure || feeStructure.length === 0) {
+    if (!feeStructure || feeStructure?.length === 0) {
       // Fetch config so frontend knows what heads to expect
       const feeConfig = await FeeStructureConfigModel.findOne({ schoolId });
       const emptyHead: Record<string, number> = {};
       if (feeConfig) {
-        for (const head of feeConfig.feeHeads) emptyHead[head] = 0;
+        // for (const head of feeConfig.feeHeads) emptyHead[head] = 0;
+        for (const headObj of feeConfig.feeHeads) emptyHead[headObj?.feeHead] = 0;
       }
 
       return res.status(200).json({

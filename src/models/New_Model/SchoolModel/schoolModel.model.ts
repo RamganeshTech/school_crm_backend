@@ -38,9 +38,9 @@ export interface ISchool extends Document {
     };
     academicTermDates: {
         academicYear: String,  // e.g., "2025-2026"
-        firstTermDate: Date | null
-        secondTermDate: Date | null
-        thirdTermDate: Date | null
+        firstTerm: Date | null
+        secondTerm: Date | null
+        thirdTerm: Date | null
     }[]
     createdAt: Date;
     updatedAt: Date;
@@ -82,9 +82,9 @@ const subscriptionSchema = new Schema<ISchoolSubscription>({
 
 const termTimelineSchema = new Schema({
     academicYear: { type: String, required: true }, // e.g., "2025-2026"
-    firstTermDate: { type: Date, default: null },
-    secondTermDate: { type: Date, default: null },
-    thirdTermDate: { type: Date, default: null }
+    firstTerm: { type: Date, default: null },
+    secondTerm: { type: Date, default: null },
+    thirdTerm: { type: Date, default: null }
 }, { _id: true });
 
 

@@ -55,7 +55,9 @@ export const getSchoolSetupStatus = async (req: Request, res: Response) => {
             schoolId: schoolObjId 
         }).lean();
 
-        const schoolFeeHeadsList = feeConfig?.feeHeads || [];
+        // const schoolFeeHeadsList = feeConfig?.feeHeads || [];
+        const schoolFeeHeadsList = feeConfig?.feeHeads?.map((headObj: any) => headObj?.feeHead) || [];
+
         const feeConfigExists = !!feeConfig && schoolFeeHeadsList.length > 0;
 
         // ── 4. Fetch fee structures for all classes in one query ──

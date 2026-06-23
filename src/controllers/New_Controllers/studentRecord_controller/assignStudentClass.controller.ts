@@ -485,7 +485,9 @@ export const assignStudentToClassv1 = async (req: RoleBasedRequest, res: Respons
         const feeConfig = await FeeStructureConfigModel.findOne({ schoolId });
         if (!feeConfig) return res.status(400).json({ ok: false, message: "FeeStructureConfig not found for this school." });
 
-        const orderedHeads: string[] = feeConfig?.feeHeads;
+        // const orderedHeads: string[] = feeConfig?.feeHeads;
+        const orderedHeads: string[] = feeConfig?.feeHeads?.map((headObj: any) => headObj?.feeHead) || [];
+
         const masterFeeMap = masterFee?.feeHeads; // Map<string, number>
 
         const newFeeStructure: Record<string, number> = {};
