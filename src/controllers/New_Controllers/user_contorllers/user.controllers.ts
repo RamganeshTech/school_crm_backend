@@ -268,10 +268,6 @@ export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
       return res.status(400).json({ ok: false, message: "phoneNo is required" });
     }
 
-    // if (phoneNo?.length !== 10) {
-    //   return res.status(400).json({ ok: false, message: "phoneNo should be 10 digits" });
-    // }
-
     if (phoneNo && !isValidPhone(phoneNo)) {
       return res.status(400).json({ message: "Invalid phone number format", ok: false });
     }
