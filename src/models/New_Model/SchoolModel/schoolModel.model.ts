@@ -37,7 +37,7 @@ export interface ISchool extends Document {
         youtube?: string | null;
     };
     academicTermDates: {
-        academicYear: String,  // e.g., "2025-2026"
+        academicYear: string,  // e.g., "2025-2026"
         firstTerm: Date | null
         secondTerm: Date | null
         thirdTerm: Date | null
