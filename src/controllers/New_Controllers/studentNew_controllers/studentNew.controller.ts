@@ -679,7 +679,7 @@ export const getAllStudentsWithoutPaginationV1 = async (req: RoleBasedRequest, r
         if (sectionId) filter.currentSectionId = sectionId;
 
         // Search Logic (Name OR SR-ID)
-        if (search) {
+        if (search) { 
             filter.$or = [
                 { studentName: { $regex: search, $options: "i" } },
                 { srId: { $regex: search, $options: "i" } }

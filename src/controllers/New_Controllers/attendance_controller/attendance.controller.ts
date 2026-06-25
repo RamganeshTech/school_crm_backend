@@ -161,10 +161,10 @@ export const markAttendance = async (req: RoleBasedRequest, res: Response) => {
             // But before we do, we check if status changed.
 
             records.forEach((newRec: any) => {
-                const oldRec = oldRecordsMap.get(newRec.studentId.toString());
+                const oldRec = oldRecordsMap.get(newRec?.studentId?.toString());
 
                 // If status changed (e.g., Absent -> Present)
-                if (oldRec && oldRec.status !== newRec.status) {
+                if (oldRec && oldRec?.status !== "" && oldRec?.status !== newRec.status) {
                     newCorrections.push({
                         studentId: newRec.studentId,
                         studentName: newRec.studentName, // Frontend sends this back

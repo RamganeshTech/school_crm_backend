@@ -246,13 +246,6 @@ export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
       isPlatformAdmin = false } = req.body;
 
 
-    // const allowedRoles = ["correspondent", "teacher", "principal", "viceprincipal", "administrator", "parent", "accountant"]
-
-    // if(!allowedRoles.includes(role)){
-    //   return res.status(400).json({ ok: false, message: `role not allowed, only ${allowedRoles.join(", ")} are allowed` });
-
-    // }
-
     if (!schoolId) {
       return res.status(400).json({ message: "schoolId is required", ok: false });
     }
@@ -263,9 +256,17 @@ export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
     }
 
 
-    // Validate required fields
-    if (!phoneNo) {
-      return res.status(400).json({ ok: false, message: "phoneNo is required" });
+    // // Validate required fields
+    // if (!phoneNo) {
+    //   return res.status(400).json({ ok: false, message: "phoneNo is required" });
+    // }
+
+
+    if (!email && !phoneNo) {
+      return res.status(400).json({
+        ok: false,
+        message: "Either email or phoneNo is required"
+      });
     }
 
     if (phoneNo && !isValidPhone(phoneNo)) {
@@ -304,10 +305,24 @@ export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
 
 
 
-    const filter = {
-      $or: [{ email: email }, { phoneNo: phoneNo }]
+    // const filter = {
+    //   $or: [{ email: email }, { phoneNo: phoneNo }]
+    // }
+    // const isDuplicate = await UserModel.findOne(filter);
+
+    const duplicateConditions = [];
+
+    if (email) {
+      duplicateConditions.push({ email });
     }
-    const isDuplicate = await UserModel.findOne(filter);
+
+    if (phoneNo) {
+      duplicateConditions.push({ phoneNo });
+    }
+
+    const isDuplicate = await UserModel.findOne({
+      $or: duplicateConditions
+    });
 
     if (isDuplicate) {
       return res.status(400).json({ message: "Email or phoneno is already in use", ok: false });
@@ -415,8 +430,12 @@ export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
       userName,
       password: hashedPassword,
       role: role,
-      phoneNo,
-      email,
+      // phoneNo,
+      // email,
+
+      ...(phoneNo && { phoneNo }),
+      ...(email && { email }),
+
       schoolCode: schoolCode,
       schoolId: schoolId,
 

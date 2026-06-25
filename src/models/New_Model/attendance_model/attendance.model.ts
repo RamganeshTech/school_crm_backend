@@ -7,7 +7,7 @@ export interface IAttendanceRecord {
     studentId: Types.ObjectId;
     studentName?: string;
     rollNumber?: string;
-    status: "present" | "absent" | "late" | "half-day";
+    status: "present" | "absent" | "late" | "half-day" | "";
     remark?: string | null;
 }
 
@@ -41,7 +41,7 @@ const recordSchema = new mongoose.Schema<IAttendanceRecord>({
     rollNumber: { type: String },  // Cache roll no
     status: {
         type: String,
-        enum: ["present", "absent", "late", "half-day"],
+        enum: ["present", "absent", "late", "half-day", ""],
         required: true
     },
     remark: { type: String, default: null }

@@ -32,9 +32,13 @@ export const createHomework = async (req: RoleBasedRequest, res: Response) => {
         const teacherId = req.user!._id
 
         // 1. Restriction: Check if date is in the past
-        const today = new Date().setHours(0, 0, 0, 0);
-        const hDate = new Date(homeworkDate).setHours(0, 0, 0, 0);
-        if (hDate < today) {
+        // const today = new Date().setHours(0, 0, 0, 0);
+        const today = new Date().toLocaleDateString("en-CA", {
+            timeZone: "Asia/Kolkata"
+        });
+
+        // const hDate = new Date(homeworkDate).setHours(0, 0, 0, 0);
+        if (homeworkDate < today) {
             return res.status(403).json({ ok: false, message: "Cannot create homework for past dates." });
         }
 
@@ -65,7 +69,7 @@ export const createHomework = async (req: RoleBasedRequest, res: Response) => {
 
         // Upsert the daily document and push the new subject
         const homework = await HomeworkModel.findOneAndUpdate(
-            { schoolId, classId, sectionId: sectionId || null, homeworkDate: hDate, academicYear },
+            { schoolId, classId, sectionId: sectionId || null, homeworkDate: homeworkDate, academicYear },
             { $push: { subjects: newSubjectEntry } },
             { upsert: true, new: true }
         );

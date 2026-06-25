@@ -48,7 +48,7 @@ const uploadSchema = new Schema<IUpload>({
 
 const userSchema = new Schema<IUser>(
   {
-    email: { type: String, },
+    email: { type: String, default: ""},
     userName: { type: String, required: true },
     password: { type: String, required: true },
     role: {
@@ -56,7 +56,7 @@ const userSchema = new Schema<IUser>(
       // required: true, 
       // enum: ["correspondent", "teacher", "principal", "viceprincipal", "administrator", "parent", "accountant", null]
     },
-    phoneNo: { type: String },
+    phoneNo: { type: String,  default: "" },
     schoolCode: { type: String, default: null },
     schoolId: { type: mongoose.Schema.ObjectId, default: null, ref: "SchoolModel" },
     isPlatformAdmin: { type: Boolean }, // internal field for conditional storage
