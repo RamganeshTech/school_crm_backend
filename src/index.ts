@@ -58,6 +58,7 @@ import schoolAdmissionBookRoutes from './routes/New_Routes/school_routes/admissi
 import schoolAdmissionFormRoutes from './routes/New_Routes/school_routes/admission_routes/admissionForm.routes.js';
 import ProgressBarRoutes from './routes/New_Routes/progress_routes/progress.routes.js';
 import billBookRecordRoutes from './routes/New_Routes/school_routes/billBook_routes/billBookRecord.routes.js';
+import employeeProfileRoutes from './routes/New_Routes/user_routes/employeeProfile.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -81,6 +82,7 @@ app.use(express.urlencoded({ extended: true }));
 // NEW ROUTES
 app.use('/api/school', schoolRoutes)
 app.use('/api/user', userRoutes)
+app.use('/api/employee-profile', employeeProfileRoutes)
 app.use('/api/class', classRoutes)
 app.use('/api/section', sectionRoutes)
 app.use('/api/teacher', teacherRoutes)
