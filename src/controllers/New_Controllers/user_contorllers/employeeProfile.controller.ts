@@ -180,7 +180,7 @@ export const getEmployeeProfileByUserId = async (req: RoleBasedRequest, res: Res
             .populate("userId", "userName email phoneNo role profileImage isPlatformAdmin");
 
         if (!profile) {
-            return res.status(404).json({ ok: false, message: "Employee profile not found for this user." });
+            return res.status(200).json({ ok: true, message: "Employee profile not found for this user." , data: null});
         }
 
         return res.status(200).json({ ok: true, data: profile });

@@ -55,16 +55,16 @@ const EmployeeProfileSchema = new Schema<IEmployeeProfile>(
         },
         
         employeeNo: { type: String, trim: true },
-        designation: { type: String },
-        department: { type: String },
-        dateOfJoining: { type: Date },
+        designation: { type: String, default: null },
+        department: { type: String, default: null },
+        dateOfJoining: { type: Date, default: null },
         employmentType: { 
             type: String, 
             enum: ["full_time", "part_time", "contract", "temporary"],
             default: "full_time" 
         },
         
-        nationalId: { type: String, }, // Store Government ID securely here
+        nationalId: { type: String,default: null }, // Store Government ID securely here
         pfNumber: { type: String, default: null },
 
         qualifications: { type: [String], default: [] },
@@ -72,16 +72,16 @@ const EmployeeProfileSchema = new Schema<IEmployeeProfile>(
         previousWorkplace: { type: String, default: null },
 
         bankDetails: {
-            accountName: { type: String },
-            accountNumber: { type: String },
-            bankName: { type: String },
-            ifscCode: { type: String },
+            accountName: { type: String , default: null},
+            accountNumber: { type: String, default: null },
+            bankName: { type: String, default: null },
+            ifscCode: { type: String, default: null },
         },
 
         emergencyContact: {
-            name: { type: String, },
-            relation: { type: String, },
-            phone: { type: String, },
+            name: { type: String,default: null },
+            relation: { type: String,default: null },
+            phone: { type: String,default: null },
         },
 
         isActive: { type: Boolean, default: true },
