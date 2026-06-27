@@ -933,7 +933,7 @@ export const getPendingRequestsForStudent = async (req: RoleBasedRequest, res: R
 // ==========================================
 export const getAllPendingRequests = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const schoolId = req.user?.schoolId || req.query.schoolId;
+        const schoolId =  req.query.schoolId || req.user?.schoolId;
         const status = req.query.status || "pending";
 
         if (!schoolId) {
