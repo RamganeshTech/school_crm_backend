@@ -1,9 +1,10 @@
 import { type Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { type AnyConnectionBulkWriteModel } from "mongoose";
 import UserModel from "../../../models/New_Model/UserModel/userModel.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js"; // Adjust based on your types
 import EmployeeProfileModel from "../../../models/New_Model/UserModel/employeeProfile.model.js";
 import { isValidPhone } from "../../../utils/basicValidation.js";
+import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 
 // ==========================================
 // 1. ONBOARD STAFF (Combined Create)
@@ -15,9 +16,18 @@ export const createEmployeeProfile = async (req: RoleBasedRequest, res: Response
     try {
         const {
             userId, schoolId, employeeNo, designation, department, dateOfJoining, employmentType,
-            nationalId, pfNumber, qualifications, yearsOfExperience, previousWorkplace,
-            bankDetails, emergencyContact
+            nationalId, pfNumber, yearsOfExperience, previousWorkplace,
+            bankDetails, emergencyContact,
+            educationDetails,
+
+            currentAddress,
+            permanentAddress
         } = req.body;
+
+
+        const parsedBankDetails = typeof bankDetails === "string" ? JSON.parse(bankDetails) : bankDetails;
+        const parsedEmergencyContact = typeof emergencyContact === "string" ? JSON.parse(emergencyContact) : emergencyContact;
+        const parsedEducationDetails = typeof educationDetails === "string" ? JSON.parse(educationDetails) : educationDetails;
 
         if (!userId || !schoolId) {
             return res.status(400).json({ ok: false, message: "userId and schoolId are required." });
@@ -25,9 +35,9 @@ export const createEmployeeProfile = async (req: RoleBasedRequest, res: Response
 
         // 🌟 Phone Number Validation
         if (emergencyContact?.phone && !isValidPhone(emergencyContact.phone)) {
-            return res.status(400).json({ 
-                ok: false, 
-                message: "Invalid emergency contact phone number. It must be exactly 10 digits." 
+            return res.status(400).json({
+                ok: false,
+                message: "Invalid emergency contact phone number. It must be exactly 10 digits."
             });
         }
 
@@ -45,13 +55,42 @@ export const createEmployeeProfile = async (req: RoleBasedRequest, res: Response
             }
         }
 
+
+        let attachments: any[] = [];
+        if (req.files && (req?.files?.length as number) > 0) {
+            attachments = await Promise.all(
+                (req.files as []).map(async (file: any) => {
+                    const uploadData = await uploadFileToS3New(file);
+
+                    // Determine Type
+                    let fileType = "pdf";
+                    if (file.mimetype.startsWith("image/")) fileType = "image";
+                    else if (file.mimetype.startsWith("video/")) fileType = "video";
+
+                    return {
+                        _id: new mongoose.Types.ObjectId(),
+                        type: fileType,
+                        key: uploadData.key,
+                        url: uploadData.url,
+                        originalName: file.originalname,
+                        uploadedAt: new Date()
+                    };
+                })
+            );
+        }
+
         // 3. Create the Employee Profile
         const newProfile = new EmployeeProfileModel({
             userId, schoolId, employeeNo, designation, department, dateOfJoining, employmentType,
-            nationalId, pfNumber, qualifications, yearsOfExperience, previousWorkplace,
-            bankDetails, emergencyContact
+            nationalId, pfNumber, educationDetails: parsedEducationDetails, yearsOfExperience, previousWorkplace,
+            bankDetails: parsedBankDetails, emergencyContact: parsedEmergencyContact,
+
+            documents: attachments,
+
+            currentAddress,
+            permanentAddress
         });
-        
+
         await newProfile.save();
 
         return res.status(201).json({
@@ -70,11 +109,15 @@ export const createEmployeeProfile = async (req: RoleBasedRequest, res: Response
 // ==========================================
 export const updateEmployeeProfile = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { userId } = req.params; 
+        const { userId } = req.params;
         const {
             employeeNo, designation, department, dateOfJoining, employmentType,
-            nationalId, pfNumber, qualifications, yearsOfExperience, previousWorkplace,
-            bankDetails, emergencyContact, isActive
+            nationalId, pfNumber, educationDetails, yearsOfExperience, previousWorkplace,
+            bankDetails, emergencyContact, isActive,
+
+            currentAddress,
+            permanentAddress
+
         } = req.body;
 
         // Ensure unique employeeNo check if they are trying to change it
@@ -90,9 +133,9 @@ export const updateEmployeeProfile = async (req: RoleBasedRequest, res: Response
 
         // 🌟 Phone Number Validation
         if (emergencyContact?.phone && !isValidPhone(emergencyContact.phone)) {
-            return res.status(400).json({ 
-                ok: false, 
-                message: "Invalid emergency contact phone number. It must be exactly 10 digits." 
+            return res.status(400).json({
+                ok: false,
+                message: "Invalid emergency contact phone number. It must be exactly 10 digits."
             });
         }
 
@@ -104,12 +147,15 @@ export const updateEmployeeProfile = async (req: RoleBasedRequest, res: Response
         if (employmentType !== undefined) updateData.employmentType = employmentType;
         if (nationalId !== undefined) updateData.nationalId = nationalId;
         if (pfNumber !== undefined) updateData.pfNumber = pfNumber;
-        if (qualifications !== undefined) updateData.qualifications = qualifications;
+        // if (qualifications !== undefined) updateData.qualifications = qualifications;
+        if (educationDetails !== undefined) updateData.educationDetails = educationDetails;
         if (yearsOfExperience !== undefined) updateData.yearsOfExperience = yearsOfExperience;
         if (previousWorkplace !== undefined) updateData.previousWorkplace = previousWorkplace;
         if (bankDetails !== undefined) updateData.bankDetails = bankDetails;
         if (emergencyContact !== undefined) updateData.emergencyContact = emergencyContact;
         if (isActive !== undefined) updateData.isActive = isActive;
+        if (currentAddress !== undefined) updateData.currentAddress = currentAddress;
+        if (permanentAddress !== undefined) updateData.permanentAddress = permanentAddress;
 
         const updatedProfile = await EmployeeProfileModel.findOneAndUpdate(
             { userId },
@@ -140,7 +186,7 @@ export const getAllEmployeeProfiles = async (req: RoleBasedRequest, res: Respons
         const { schoolId, department, designation, isActive, page = 1, limit = 10 } = req.query;
 
         const filter: any = { schoolId };
-        
+
         if (department) filter.department = department;
         if (designation) filter.designation = designation;
         if (isActive !== undefined) filter.isActive = isActive === 'true';
@@ -180,7 +226,7 @@ export const getEmployeeProfileByUserId = async (req: RoleBasedRequest, res: Res
             .populate("userId", "userName email phoneNo role profileImage isPlatformAdmin");
 
         if (!profile) {
-            return res.status(200).json({ ok: true, message: "Employee profile not found for this user." , data: null});
+            return res.status(200).json({ ok: true, message: "Employee profile not found for this user.", data: null });
         }
 
         return res.status(200).json({ ok: true, data: profile });
@@ -205,15 +251,103 @@ export const deleteEmployeeProfile = async (req: RoleBasedRequest, res: Response
         );
 
         if (!offboardedProfile) {
-            return res.status(404).json({ 
-                ok: false, 
-                message: "Employee profile not found. Cannot offboard." 
+            return res.status(404).json({
+                ok: false,
+                message: "Employee profile not found. Cannot offboard."
             });
         }
 
         return res.status(200).json({
             ok: true,
             message: `Employee profile for employee number ${offboardedProfile.employeeNo} has been deactivated. The User account remains intact.`
+        });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message });
+    }
+};
+
+
+
+// ==========================================
+// ADD DOCUMENTS TO EXISTING EMPLOYEE PROFILE
+// ==========================================
+export const addEmployeeDocuments = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { userId } = req.params;
+
+        if (!req.files || (req.files as any[]).length === 0) {
+            return res.status(400).json({ ok: false, message: "No files uploaded." });
+        }
+
+        const profile = await EmployeeProfileModel.findOne({ userId });
+        if (!profile) {
+            return res.status(404).json({ ok: false, message: "Employee profile not found." });
+        }
+
+        const newAttachments = await Promise.all(
+            (req.files as any[]).map(async (file: any) => {
+                const uploadData = await uploadFileToS3New(file);
+
+                let fileType = "pdf";
+                if (file.mimetype.startsWith("image/")) fileType = "image";
+                else if (file.mimetype.startsWith("video/")) fileType = "video";
+
+                return {
+                    _id: new mongoose.Types.ObjectId(),
+                    type: fileType,
+                    key: uploadData.key,
+                    url: uploadData.url,
+                    originalName: file.originalname,
+                    uploadedAt: new Date()
+                };
+            })
+        );
+
+        (profile.documents as any).push(...newAttachments);
+        await profile.save();
+
+        return res.status(200).json({
+            ok: true,
+            data: profile,
+            message: "Documents added successfully."
+        });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message });
+    }
+};
+
+
+// ==========================================
+// DELETE A SINGLE EMPLOYEE DOCUMENT
+// ==========================================
+export const deleteEmployeeDocument = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { userId, documentId } = req.params;
+
+        const profile = await EmployeeProfileModel.findOne({ userId });
+        if (!profile) {
+            return res.status(404).json({ ok: false, message: "Employee profile not found." });
+        }
+
+        const docToDelete = (profile.documents as any).find((doc: any) => doc._id.toString() === documentId);
+        if (!docToDelete) {
+            return res.status(404).json({ ok: false, message: "Document not found." });
+        }
+
+        // // Remove from S3 first (don't block DB cleanup if this fails, but log it)
+        // try {
+        //     await deleteFileFromS3New(docToDelete.key);
+        // } catch (s3Error: any) {
+        //     console.error("S3 deletion failed:", s3Error.message);
+        // }
+
+        profile.documents = (profile.documents as any).filter((doc: any) => doc._id.toString() !== documentId);
+        await profile.save();
+
+        return res.status(200).json({
+            ok: true,
+            data: profile,
+            message: "Document deleted successfully."
         });
     } catch (error: any) {
         return res.status(500).json({ ok: false, message: error.message });

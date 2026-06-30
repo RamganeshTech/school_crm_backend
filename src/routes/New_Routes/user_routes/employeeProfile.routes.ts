@@ -4,7 +4,11 @@ import { createEmployeeProfile,
 getAllEmployeeProfiles,
 getEmployeeProfileByUserId,
 updateEmployeeProfile,
-deleteEmployeeProfile } from "../../../controllers/New_Controllers/user_contorllers/employeeProfile.controller.js";
+deleteEmployeeProfile, 
+addEmployeeDocuments,
+deleteEmployeeDocument} from "../../../controllers/New_Controllers/user_contorllers/employeeProfile.controller.js";
+import { upload } from "../../../utils/s4UploadsNew.js";
+
 
 const employeeProfileRoutes = express.Router();
 
@@ -17,6 +21,7 @@ const employeeProfileRoutes = express.Router();
 employeeProfileRoutes.post(
     "/create",
     multiRoleAuth("correspondent", "administrator", ),
+    upload.array("files"), // 'attachments' is the key name in Postman
     createEmployeeProfile
 );
 
@@ -47,5 +52,22 @@ employeeProfileRoutes.delete(
     multiRoleAuth("correspondent", "administrator",),
     deleteEmployeeProfile
 );
+
+// 3. Add documents to an existing profile (multiple files in one go)
+employeeProfileRoutes.post(
+    "/:userId/documents",
+    multiRoleAuth("correspondent", "administrator"),
+    upload.array("files"),
+    addEmployeeDocuments
+);
+
+// 4. Delete a single document from a profile
+employeeProfileRoutes.delete(
+    "/:userId/documents/:documentId",
+    multiRoleAuth("correspondent", "administrator"),
+    deleteEmployeeDocument
+);
+
+
 
 export default employeeProfileRoutes;

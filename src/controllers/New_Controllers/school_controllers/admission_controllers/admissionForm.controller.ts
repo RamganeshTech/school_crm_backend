@@ -127,6 +127,8 @@ export const submitPublicAdmissionForm = async (req: any, res: Response) => {
             return res.status(400).json({ ok: false, message: "This application has already been submitted." });
         }
 
+        
+
         // 🌟 2. Explicitly map fields to the database document
         existingForm.studentName = studentName;
         existingForm.mobileNumber = mobileNumber;
