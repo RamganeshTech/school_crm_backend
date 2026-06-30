@@ -20,7 +20,7 @@ const employeeProfileRoutes = express.Router();
 // 1. Create a new employee profile
 employeeProfileRoutes.post(
     "/create",
-    multiRoleAuth("correspondent", "administrator", ),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
     upload.array("files"), // 'attachments' is the key name in Postman
     createEmployeeProfile
 );
@@ -42,21 +42,21 @@ employeeProfileRoutes.get(
 // 4. Update an employee profile by User ID
 employeeProfileRoutes.put(
     "/update/:userId",
-    multiRoleAuth("correspondent", "administrator",),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
     updateEmployeeProfile
 );
 
 // 5. Soft delete (offboard) an employee profile by User ID
 employeeProfileRoutes.delete(
     "/delete/:userId",
-    multiRoleAuth("correspondent", "administrator",),
+    multiRoleAuth("correspondent", "administrator"),
     deleteEmployeeProfile
 );
 
 // 3. Add documents to an existing profile (multiple files in one go)
 employeeProfileRoutes.post(
     "/:userId/documents",
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
     upload.array("files"),
     addEmployeeDocuments
 );
@@ -64,7 +64,7 @@ employeeProfileRoutes.post(
 // 4. Delete a single document from a profile
 employeeProfileRoutes.delete(
     "/:userId/documents/:documentId",
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
     deleteEmployeeDocument
 );
 

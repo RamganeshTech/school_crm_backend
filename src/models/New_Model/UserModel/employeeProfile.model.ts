@@ -21,7 +21,8 @@ export interface IEmployeeProfile extends Document {
     employmentType: "full_time" | "part_time" | "contract" | "temporary";
 
     currentAddress: string
-    permanentAddress: string 
+    permanentAddress: string
+    aadharNumber: string
 
     // Sensitive HR Details
     nationalId: string;          // Government ID (e.g., [Aadhaar Redacted] / PAN)
@@ -114,6 +115,7 @@ const EmployeeProfileSchema = new Schema<IEmployeeProfile>(
         // qualifications: { type: [String], default: [] },
         yearsOfExperience: { type: Number, default: null },
         previousWorkplace: { type: String, default: null },
+        aadharNumber: { type: String, default: null },
 
         bankDetails: {
             accountName: { type: String, default: null },

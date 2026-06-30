@@ -18,7 +18,7 @@ export const createEmployeeProfile = async (req: RoleBasedRequest, res: Response
             userId, schoolId, employeeNo, designation, department, dateOfJoining, employmentType,
             nationalId, pfNumber, yearsOfExperience, previousWorkplace,
             bankDetails, emergencyContact,
-            educationDetails,
+            educationDetails,aadharNumber,
 
             currentAddress,
             permanentAddress
@@ -88,7 +88,8 @@ export const createEmployeeProfile = async (req: RoleBasedRequest, res: Response
             documents: attachments,
 
             currentAddress,
-            permanentAddress
+            permanentAddress,
+            aadharNumber
         });
 
         await newProfile.save();
@@ -116,6 +117,7 @@ export const updateEmployeeProfile = async (req: RoleBasedRequest, res: Response
             bankDetails, emergencyContact, isActive,
 
             currentAddress,
+            aadharNumber,
             permanentAddress
 
         } = req.body;
@@ -156,6 +158,7 @@ export const updateEmployeeProfile = async (req: RoleBasedRequest, res: Response
         if (isActive !== undefined) updateData.isActive = isActive;
         if (currentAddress !== undefined) updateData.currentAddress = currentAddress;
         if (permanentAddress !== undefined) updateData.permanentAddress = permanentAddress;
+        if (aadharNumber !== undefined) updateData.aadharNumber = aadharNumber;
 
         const updatedProfile = await EmployeeProfileModel.findOneAndUpdate(
             { userId },
