@@ -6,7 +6,10 @@ getEmployeeProfileByUserId,
 updateEmployeeProfile,
 deleteEmployeeProfile, 
 addEmployeeDocuments,
-deleteEmployeeDocument} from "../../../controllers/New_Controllers/user_contorllers/employeeProfile.controller.js";
+deleteEmployeeDocument,
+addSalarySlip,
+deleteSalarySlip,
+upsertEmployeeProfile} from "../../../controllers/New_Controllers/user_contorllers/employeeProfile.controller.js";
 import { upload } from "../../../utils/s4UploadsNew.js";
 
 
@@ -68,6 +71,30 @@ employeeProfileRoutes.delete(
     deleteEmployeeDocument
 );
 
+
+employeeProfileRoutes.post(
+    "/:userId/salary-slips",
+    multiRoleAuth("correspondent", "administrator", "teacher"),
+    upload.single("file"),
+    addSalarySlip
+);
+
+employeeProfileRoutes.delete(
+    "/:userId/salary-slips/:slipId",
+    multiRoleAuth("correspondent", "administrator", "teacher"),
+    deleteSalarySlip
+);
+
+
+employeeProfileRoutes.post(
+    "/:userId/upsert",
+    multiRoleAuth("correspondent", "administrator", "teacher"),
+    upload.fields([
+        { name: "documents",  },
+        { name: "salarySlipFile",  }
+    ]),
+    upsertEmployeeProfile
+);
 
 
 export default employeeProfileRoutes;

@@ -356,3 +356,235 @@ export const deleteEmployeeDocument = async (req: RoleBasedRequest, res: Respons
         return res.status(500).json({ ok: false, message: error.message });
     }
 };
+
+
+// ==========================================
+// ADD SALARY SLIP
+// ==========================================
+export const addSalarySlip = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const { amount, salaryDate } = req.body;
+
+        const hasAmountOrDate = (amount !== undefined && amount !== null && amount !== "") ||
+            (salaryDate !== undefined && salaryDate !== null && salaryDate !== "");
+        const hasFile = !!req.file;
+
+        if (!hasAmountOrDate && !hasFile) {
+            return res.status(400).json({
+                ok: false,
+                message: "Provide at least the amount/date or a salary slip file."
+            });
+        }
+
+        const profile = await EmployeeProfileModel.findOne({ userId });
+        if (!profile) {
+            return res.status(404).json({ ok: false, message: "Employee profile not found." });
+        }
+
+        let fileData: any = null;
+
+        if (hasFile) {
+            const file = req.file as any;
+            const uploadData = await uploadFileToS3New(file);
+
+            let fileType: "pdf" | "image" = "pdf";
+            if (file.mimetype.startsWith("image/")) fileType = "image";
+
+
+            fileData = {
+                _id: new mongoose.Types.ObjectId(),
+                type: fileType,
+                key: uploadData.key,
+                url: uploadData.url,
+                originalName: file.originalname,
+                uploadedAt: new Date()
+            };
+        }
+
+        const newSlip = {
+            _id: new mongoose.Types.ObjectId(),
+            amount: amount ? Number(amount) : null,
+            salaryDate: salaryDate ? new Date(salaryDate) : null,
+            file: fileData
+        };
+
+        profile.salarySlips.push(newSlip);
+        await profile.save();
+
+        return res.status(200).json({
+            ok: true,
+            data: profile,
+            message: "Salary slip added successfully."
+        });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message });
+    }
+};
+
+// ==========================================
+// DELETE SALARY SLIP
+// ==========================================
+export const deleteSalarySlip = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { userId, slipId } = req.params;
+
+        const profile = await EmployeeProfileModel.findOne({ userId });
+        if (!profile) {
+            return res.status(404).json({ ok: false, message: "Employee profile not found." });
+        }
+
+        const slipToDelete = profile.salarySlips.find((s: any) => s._id.toString() === slipId);
+        if (!slipToDelete) {
+            return res.status(404).json({ ok: false, message: "Salary slip not found." });
+        }
+
+        // if (slipToDelete.file?.key) {
+        //     try {
+        //         await deleteFileFromS3New(slipToDelete.file.key);
+        //     } catch (s3Error: any) {
+        //         console.error("S3 deletion failed:", s3Error.message);
+        //     }
+        // }
+
+        profile.salarySlips = profile.salarySlips.filter((s: any) => s._id.toString() !== slipId);
+        await profile.save();
+
+        return res.status(200).json({
+            ok: true,
+            data: profile,
+            message: "Salary slip deleted successfully."
+        });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message });
+    }
+};
+
+
+//  NEW VERSION
+
+const ALLOWED_FIELDS = [
+    "employeeNo", "designation", "department", "dateOfJoining", "employmentType",
+    "nationalId", "pfNumber", "yearsOfExperience", "previousWorkplace",
+    "currentAddress", "permanentAddress", "educationDetails",
+    "bankDetails", "emergencyContact", "aadharNumber"
+];
+
+export const upsertEmployeeProfile = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const { schoolId, salaryAmount, salaryDate, ...rest } = req.body;
+
+        if (rest.emergencyContact && typeof rest.emergencyContact === "string") {
+            rest.emergencyContact = JSON.parse(rest.emergencyContact);
+        }
+        if (rest.bankDetails && typeof rest.bankDetails === "string") {
+            rest.bankDetails = JSON.parse(rest.bankDetails);
+        }
+        if (rest.educationDetails && typeof rest.educationDetails === "string") {
+            rest.educationDetails = JSON.parse(rest.educationDetails);
+        }
+
+        if (rest.emergencyContact?.phone && !isValidPhone(rest.emergencyContact.phone)) {
+            return res.status(400).json({
+                ok: false,
+                message: "Invalid emergency contact phone number. It must be exactly 10 digits."
+            });
+        }
+
+        const setData: any = {};
+        for (const field of ALLOWED_FIELDS) {
+            if (rest[field] !== undefined) setData[field] = rest[field];
+        }
+
+        const files = req.files as { [fieldname: string]: any[] } | undefined;
+        const documentFiles = files?.documents || [];
+        const salarySlipFile = files?.salarySlipFile?.[0];
+
+        const newDocuments = await Promise.all(
+            documentFiles.map(async (file: any) => {
+                const uploadData = await uploadFileToS3New(file);
+                let fileType = "pdf";
+                if (file.mimetype.startsWith("image/")) fileType = "image";
+                else if (file.mimetype.startsWith("video/")) fileType = "video";
+
+                return {
+                    _id: new mongoose.Types.ObjectId(),
+                    type: fileType,
+                    key: uploadData.key,
+                    url: uploadData.url,
+                    originalName: file.originalname,
+                    uploadedAt: new Date()
+                };
+            })
+        );
+
+        const hasSalaryInput = salarySlipFile || salaryAmount || salaryDate;
+        let newSalarySlip: any = null;
+
+        if (hasSalaryInput) {
+            let salaryFileData: any = null;
+            if (salarySlipFile) {
+                const uploadData = await uploadFileToS3New(salarySlipFile);
+                let fileType: "pdf" | "image" = "pdf";
+                if (salarySlipFile.mimetype.startsWith("image/")) fileType = "image";
+
+                salaryFileData = {
+                    _id: new mongoose.Types.ObjectId(),
+                    type: fileType,
+                    key: uploadData.key,
+                    url: uploadData.url,
+                    originalName: salarySlipFile.originalname,
+                    uploadedAt: new Date()
+                };
+            }
+
+            newSalarySlip = {
+                _id: new mongoose.Types.ObjectId(),
+                amount: salaryAmount ? Number(salaryAmount) : null,
+                salaryDate: salaryDate ? new Date(salaryDate) : null,
+                file: salaryFileData
+            };
+        }
+
+        let profile = await EmployeeProfileModel.findOne({ userId });
+
+        if (!profile) {
+            if (!schoolId) {
+                return res.status(400).json({ ok: false, message: "schoolId is required to create a new employee profile." });
+            }
+            profile = new EmployeeProfileModel({
+                userId,
+                schoolId,
+                ...setData,
+                documents: newDocuments,
+                salarySlips: newSalarySlip ? [newSalarySlip] : []
+            });
+            await profile.save();
+        } else {
+            const updateOps: any = {};
+            if (Object.keys(setData).length > 0) updateOps.$set = setData;
+
+            const pushOps: any = {};
+            if (newDocuments.length > 0) pushOps.documents = { $each: newDocuments };
+            if (newSalarySlip) pushOps.salarySlips = newSalarySlip;
+            if (Object.keys(pushOps).length > 0) updateOps.$push = pushOps;
+
+            if (Object.keys(updateOps).length > 0) {
+                profile = await EmployeeProfileModel.findOneAndUpdate(
+                    { userId },
+                    updateOps,
+                    { new: true, runValidators: true }
+                );
+            }
+        }
+
+        return res.status(200).json({
+            ok: true,
+            data: profile,
+            message: "Profile saved successfully."
+        });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message });
+    }
+};

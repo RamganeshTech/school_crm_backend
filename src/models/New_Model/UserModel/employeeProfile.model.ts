@@ -55,6 +55,12 @@ export interface IEmployeeProfile extends Document {
         grade?: string | null
     }[]
 
+    salarySlips: {
+        amount?: number | null;
+        salaryDate?: NativeDate | null;
+        file?: IUpload | null;
+    }[]
+
     isActive: boolean;           // To handle resignations/terminations without deleting records
     documents: IUpload
     createdAt: Date;
@@ -78,6 +84,13 @@ const EducationSchema = new Schema({
     yearOfPassing: { type: String, default: null },// e.g., "2024"
     grade: { type: String, default: null }          // e.g., "8.5 CGPA" or "85%"
 }, { _id: true });
+
+
+const salarySchema = new Schema({
+    amount: { type: Number, default: null },
+    salaryDate: { type: Date, default: null },
+    file: { type: uploadSchema, default: null }
+}, { _id: true })
 
 
 const EmployeeProfileSchema = new Schema<IEmployeeProfile>(
@@ -132,7 +145,8 @@ const EmployeeProfileSchema = new Schema<IEmployeeProfile>(
 
         isActive: { type: Boolean, default: true },
 
-        documents: { type: [uploadSchema], default: [] }
+        documents: { type: [uploadSchema], default: [] },
+        salarySlips: { type: [salarySchema], default: [] }
     },
     { timestamps: true }
 );
