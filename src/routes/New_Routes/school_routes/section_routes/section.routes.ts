@@ -27,7 +27,7 @@ sectionRoutes.put(
 
 sectionRoutes.delete(
   "/delete/:id",
-  multiRoleAuth("correspondent"),
+  multiRoleAuth("correspondent", "administrator"),
   deleteSection
 );
 

@@ -16,7 +16,7 @@ userRoutes.get('/isauthenticated',
     isAuthenticated);
 
 userRoutes.delete("/delete/:id",
-    multiRoleAuth("correspondent"),
+    multiRoleAuth("correspondent", "administrator"),
     deleteUser);
 
 userRoutes.put("/update/:id",

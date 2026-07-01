@@ -58,7 +58,7 @@ studentRoutes.delete(
 // DELETE
 studentRoutes.delete(
   "/delete/:id",
-  multiRoleAuth("correspondent"),
+  multiRoleAuth("correspondent", "administrator"),
   featureGuard("studentRecord"),
 
   deleteStudent
