@@ -1028,8 +1028,8 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
                     }], { session });
 
                     // 🌟 NEW: Increment the tracker in the main BillBookModel so the 'next' view is accurate
-                    activeBillBook.billNumber = getNextAlphanumericSequence(assignedBillNo);
-                    await activeBillBook.save({ session });
+                    // activeBillBook.billNumber = getNextAlphanumericSequence(assignedBillNo);
+                    // await activeBillBook.save({ session });
                 }
             } catch (error) {
                 // console.log("error", error);
