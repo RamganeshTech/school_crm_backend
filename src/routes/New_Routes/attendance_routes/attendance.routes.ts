@@ -28,7 +28,7 @@ attendanceRoutes.get(
 // Used by Teachers daily
 attendanceRoutes.post(
   "/mark",
-  multiRoleAuth("correspondent", "teacher"),
+  multiRoleAuth("correspondent", "teacher", "administrator"),
   featureGuard("attendance"),
   markAttendance
 );

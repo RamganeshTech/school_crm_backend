@@ -23,7 +23,7 @@ const employeeProfileRoutes = express.Router();
 // 1. Create a new employee profile
 employeeProfileRoutes.post(
     "/create",
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     upload.array("files"), // 'attachments' is the key name in Postman
     createEmployeeProfile
 );
@@ -45,7 +45,7 @@ employeeProfileRoutes.get(
 // 4. Update an employee profile by User ID
 employeeProfileRoutes.put(
     "/update/:userId",
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     updateEmployeeProfile
 );
 
@@ -59,7 +59,7 @@ employeeProfileRoutes.delete(
 // 3. Add documents to an existing profile (multiple files in one go)
 employeeProfileRoutes.post(
     "/:userId/documents",
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     upload.array("files"),
     addEmployeeDocuments
 );
@@ -67,28 +67,28 @@ employeeProfileRoutes.post(
 // 4. Delete a single document from a profile
 employeeProfileRoutes.delete(
     "/:userId/documents/:documentId",
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     deleteEmployeeDocument
 );
 
 
 employeeProfileRoutes.post(
     "/:userId/salary-slips",
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     upload.single("file"),
     addSalarySlip
 );
 
 employeeProfileRoutes.delete(
     "/:userId/salary-slips/:slipId",
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     deleteSalarySlip
 );
 
 
 employeeProfileRoutes.post(
     "/:userId/upsert",
-    multiRoleAuth("correspondent", "administrator", "teacher"),
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     upload.fields([
         { name: "documents",  },
         { name: "salarySlipFile",  }
