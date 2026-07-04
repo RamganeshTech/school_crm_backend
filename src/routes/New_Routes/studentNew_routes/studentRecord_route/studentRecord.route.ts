@@ -214,7 +214,7 @@ studentRecordRoutes.put(
 
 studentRecordRoutes.put(
   "/v1/assign",
-  multiRoleAuth("correspondent", "administrator", "accountant"),
+  multiRoleAuth("correspondent", "administrator", "accountant", "teacher"),
   assignStudentToClassv1
 );
 

@@ -14,7 +14,7 @@ const studentRoutes = express.Router();
 // CREATE
 studentRoutes.post(
   "/create",
-  multiRoleAuth("correspondent", "administrator", "accountant",),
+  multiRoleAuth("correspondent", "administrator", "accountant", "teacher"),
   featureGuard("studentRecord"),
 
   upload.single("file"), // Image
@@ -24,7 +24,7 @@ studentRoutes.post(
 // UPDATE
 studentRoutes.put(
   "/update/:id",
-  multiRoleAuth("correspondent", "administrator", "accountant", "parent"),
+  multiRoleAuth("correspondent", "administrator", "accountant", "parent", "teacher"),
   featureGuard("studentRecord"),
 
   upload.single("file"), // Image
@@ -34,7 +34,7 @@ studentRoutes.put(
 
 studentRoutes.post(
   "/v1/upload-files/:studentId",
-  multiRoleAuth("correspondent", "administrator", "accountant",),
+  multiRoleAuth("correspondent", "administrator", "accountant", "teacher"),
   featureGuard("studentRecord"),
 
   upload.array("files"), // Image
