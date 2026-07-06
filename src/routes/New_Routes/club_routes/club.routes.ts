@@ -121,7 +121,7 @@ clubRoutes.get('/video/get/:id',
 // {{baseURL}}/api/club/video/upload/
 
 clubRoutes.post('/video/upload',
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
     upload.single('video'),
 
     featureGuard("club"),
@@ -129,7 +129,7 @@ clubRoutes.post('/video/upload',
 
 // Update details only (Title, Topic, Level) - No file upload here
 clubRoutes.put('/video/updatedetails/:id',
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
 
     featureGuard("club"),
     updateClubVideoDetails);
@@ -145,14 +145,14 @@ clubRoutes.put('/video/upload-pdf/:id',
 
 // Update VIDEO FILE only (Multipart form-data: 'video' file) - Re-uploads the file
 clubRoutes.put('/video/updatefile/:id',
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
     upload.single('video'),
 
     featureGuard("club"),
     updateClubVideoFile);
 
 clubRoutes.delete('/video/deletefile/:id/:fileId',
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "teacher"),
 
     featureGuard("club"),
     deleteClubVideoFile);
