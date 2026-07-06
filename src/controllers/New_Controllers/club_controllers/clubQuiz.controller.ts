@@ -146,11 +146,12 @@ export const updateClubQuiz = async (req: RoleBasedRequest, res: Response) => {
 
 export const getAllClubQuizzes = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { clubId, classId, sectionId, page = 1, limit = 10 } = req.query;
+        const { clubId, clubVideoId, classId, sectionId, page = 1, limit = 10 } = req.query;
         const schoolId = req.user?.schoolId;
 
         const filter: any = { schoolId, isActive: true };
         if (clubId) filter.clubId = clubId;
+        if (clubVideoId) filter.clubVideoId = clubVideoId;
         if (classId) filter.classId = classId;
         if (sectionId) filter.sectionId = sectionId;
 
@@ -320,18 +321,18 @@ Strict Rules:
             }
         });
 
-        console.log("response", response)
+        // console.log("response", response)
 
         // 4. Parse the AI Response (Note: response.text is a property now)
         const aiGeneratedData = JSON.parse(response.text!);
 
-        console.log("aiGeneratedData parsed", aiGeneratedData)
+        // console.log("aiGeneratedData parsed", aiGeneratedData)
 
 
         // 5. Calculate Points and Save
         const totalPoints = aiGeneratedData.questions.reduce((sum: any, q: any) => sum + (q.points || 1), 0);
 
-        console.log("total points", totalPoints)
+        // console.log("total points", totalPoints)
 
         // Since each question is guaranteed to be 1 point via the Schema Enum:
         // const totalPoints = aiGeneratedData.questions.length;
