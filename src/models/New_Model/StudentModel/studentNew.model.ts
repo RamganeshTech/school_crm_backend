@@ -115,7 +115,7 @@ const StudentNewSchema = new Schema<IStudentNew>({
     currentClassId: { type: mongoose.Schema.Types.ObjectId, ref: "ClassModel", default: null },
     currentSectionId: { type: mongoose.Schema.Types.ObjectId, ref: "SectionModel", default: null },
 
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: false },
 
     clubs: [{ type: mongoose.Schema.Types.ObjectId, ref: "ClubMainModel" }],
 

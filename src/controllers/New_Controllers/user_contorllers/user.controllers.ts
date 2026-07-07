@@ -16,10 +16,13 @@ const JWT_SECRET = process.env.JWT_SECRET! // store in env
 
 export const createUser = async (req: RoleBasedRequest, res: Response) => {
   try {
-    const { email, userName, password, phoneNo, schoolCode,
+    let { email, userName, password, phoneNo, schoolCode,
       //  role, 
       isPlatformAdmin = false } = req.body;
 
+
+    email = email?.trim();
+    password = password?.trim();
 
     // const allowedRoles = ["correspondent", "teacher", "principal", "viceprincipal", "administrator", "parent", "accountant"]
 
@@ -241,9 +244,13 @@ export const createUser = async (req: RoleBasedRequest, res: Response) => {
 
 export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
   try {
-    const { email, userName, password, phoneNo,
+    let { email, userName, password, phoneNo,
       role, schoolId,
       isPlatformAdmin = false } = req.body;
+
+    // Trim whitespace from email and password
+    email = email?.trim();
+    password = password?.trim();
 
 
     if (!schoolId) {
@@ -487,7 +494,11 @@ export const createUserV1 = async (req: RoleBasedRequest, res: Response) => {
 
 export const loginUser = async (req: RoleBasedRequest, res: Response) => {
   try {
-    const { identifier, password } = req.body;
+    let { identifier, password } = req.body;
+
+    // Trim whitespace from identifier (email/phone) and password
+    identifier = identifier?.trim();
+    password = password?.trim();
 
     if (!identifier || !password) {
       return res.status(400).json({ ok: false, message: "Email/PhoneNo and and password are required" });

@@ -134,7 +134,7 @@ export const createStudentProfile = async (req: RoleBasedRequest, res: Response)
             // Defaulting cache IDs to null initially
             currentClassId: null,
             currentSectionId: null,
-            isActive: true
+            isActive: false
         });
 
 

@@ -756,9 +756,9 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             schoolId, studentId, academicYear: currentYear,
         }).session(session);
 
-        if (studentRecord && studentRecord?.isActive === false) {
-            throw new Error("Action Denied: This Student Record is INACTIVE.");
-        }
+        // if (studentRecord && studentRecord?.isActive === false) {
+        //     throw new Error("Action Denied: This Student Record is INACTIVE.");
+        // }
 
         if (!studentRecord) {
             const cDoc: any = await ClassModel.findById(classId).session(session);
@@ -948,6 +948,8 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             schoolDoc.academicTermDates,
             currentYear!
         );
+
+        studentRecord.isActive = true
 
         // ── 10. SAVE STUDENT RECORD ──────────────────────────────────────
         await studentRecord.save({ session });

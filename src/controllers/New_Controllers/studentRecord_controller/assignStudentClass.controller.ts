@@ -175,7 +175,7 @@ export const assignStudentToClass = async (req: RoleBasedRequest, res: Response)
             // Meta
             newOld: newOld || "Old",
             rollNumber: rollNumber || null,
-            isActive: true,
+            isActive: false,
 
             // FINANCIALS (The Reset)
             isBusApplicable: applyBus,
@@ -527,7 +527,7 @@ export const assignStudentToClassv1 = async (req: RoleBasedRequest, res: Respons
             // Meta
             newOld: newOld || "Old",
             rollNumber: rollNumber || null,
-            isActive: true,
+            isActive: false,
 
             // FINANCIALS (The Reset)
             // feeStructurev1: newFeeStructure,
