@@ -18,7 +18,7 @@ export const createEmployeeProfile = async (req: RoleBasedRequest, res: Response
             userId, schoolId, employeeNo, designation, department, dateOfJoining, employmentType,
             nationalId, pfNumber, yearsOfExperience, previousWorkplace,
             bankDetails, emergencyContact,
-            educationDetails,aadharNumber,
+            educationDetails, aadharNumber,
 
             currentAddress,
             permanentAddress
@@ -501,6 +501,43 @@ export const upsertEmployeeProfile = async (req: RoleBasedRequest, res: Response
         const documentFiles = files?.documents || [];
         const salarySlipFile = files?.salarySlipFile?.[0];
 
+        // 🌟 NEW: Extract specific identity documents
+        const panFile = files?.panDocument?.[0];
+        const aadhaarFile = files?.aadhaarDocument?.[0];
+        const appointmentLetterFile = files?.appointmentLetter?.[0];
+
+
+        // --- 2. HELPER TO PROCESS SINGLE UPLOADS ---
+        // 🌟 NEW: Helper function to avoid repeating the S3 upload logic
+        const processSingleDoc = async (file: any) => {
+            if (!file) return null;
+            const uploadData = await uploadFileToS3New(file);
+            let fileType = "pdf";
+            if (file.mimetype.startsWith("image/")) fileType = "image";
+
+            return {
+                _id: new mongoose.Types.ObjectId(),
+                type: fileType,
+                key: uploadData.key,
+                url: uploadData.url,
+                originalName: file.originalname,
+                uploadedAt: new Date()
+            };
+        };
+
+
+        // --- 3. PROCESS SPECIFIC DOCUMENTS ---
+        // 🌟 NEW: Upload identity docs and attach directly to setData so they update cleanly
+        const uploadedPan = await processSingleDoc(panFile);
+        if (uploadedPan) setData.panDocument = uploadedPan;
+
+        const uploadedAadhaar = await processSingleDoc(aadhaarFile);
+        if (uploadedAadhaar) setData.aadhaarDocument = uploadedAadhaar;
+
+        // 👈 ADD THIS BLOCK
+        const uploadedAppointment = await processSingleDoc(appointmentLetterFile);
+        if (uploadedAppointment) setData.appointmentLetter = uploadedAppointment;
+
         const newDocuments = await Promise.all(
             documentFiles.map(async (file: any) => {
                 const uploadData = await uploadFileToS3New(file);
@@ -583,6 +620,40 @@ export const upsertEmployeeProfile = async (req: RoleBasedRequest, res: Response
             ok: true,
             data: profile,
             message: "Profile saved successfully."
+        });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message });
+    }
+};
+
+
+
+export const deleteSpecificDocument = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const { field } = req.query; // e.g., ?field=panDocument
+
+        // Strict security: Only allow deleting these specific fields
+        const allowedFields = ['panDocument', 'aadhaarDocument', 'appointmentLetter'];
+
+        if (!field || typeof field !== 'string' || !allowedFields.includes(field)) {
+            return res.status(400).json({ ok: false, message: "Invalid or missing field parameter" });
+        }
+
+        // Set the specific field to null
+        const updatedProfile = await EmployeeProfileModel.findOneAndUpdate(
+            { userId },
+            { $set: { [field]: null } },
+            { new: true }
+        );
+
+        if (!updatedProfile) {
+            return res.status(404).json({ ok: false, message: "Employee profile not found" });
+        }
+
+        return res.status(200).json({ 
+            ok: true, 
+            message: `${field} deleted successfully` 
         });
     } catch (error: any) {
         return res.status(500).json({ ok: false, message: error.message });

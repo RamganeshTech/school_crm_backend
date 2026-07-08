@@ -46,7 +46,7 @@ studentRoutes.post(
 // DELETE
 studentRoutes.delete(
   "/v1/delete-document/:studentId/:documentId",
-  multiRoleAuth("correspondent", "administrator", "accountant",),
+  multiRoleAuth("correspondent", "administrator", "accountant", "teacher"),
   featureGuard("studentRecord"),
 
   deleteStudentDocument
@@ -58,7 +58,7 @@ studentRoutes.delete(
 // DELETE
 studentRoutes.delete(
   "/delete/:id",
-  multiRoleAuth("correspondent", "administrator"),
+  multiRoleAuth("correspondent", "administrator", "teacher"),
   featureGuard("studentRecord"),
 
   deleteStudent

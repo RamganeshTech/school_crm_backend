@@ -1,7 +1,9 @@
 import express from 'express'
-import { assignRolesToUser, createUser, deleteUser, isAuthenticated, loginUser, logoutUser, updateUser, getParentStudents, createUserV1, requestPasswordReset, resetPassword } from '../../../controllers/New_Controllers/user_contorllers/user.controllers.js';
+import { assignRolesToUser, createUser, deleteUser, isAuthenticated, loginUser, logoutUser, updateUser, getParentStudents, createUserV1, requestPasswordReset, resetPassword, updateProfileImg } from '../../../controllers/New_Controllers/user_contorllers/user.controllers.js';
 import { multiRoleAuth } from '../../../middleware/multiRoleRequest.js';
 import { getSingleUser, getUsersBySchool } from '../../../controllers/New_Controllers/user_contorllers/userUtil.controller.js';
+import { upload } from "../../../utils/s4UploadsNew.js";
+
 
 const userRoutes = express.Router()
 
@@ -22,6 +24,12 @@ userRoutes.delete("/delete/:id",
 userRoutes.put("/update/:id",
     multiRoleAuth("correspondent", "teacher", "principal", "parent", "accountant", "administrator", "viceprincipal"),
     updateUser);
+
+
+userRoutes.put("/update-profile-img/:id",
+  upload.single("file"), // Image
+    multiRoleAuth("correspondent", "teacher", "principal", "parent", "accountant", "administrator", "viceprincipal"),
+    updateProfileImg);
 
 //  new route (in role  if you send the all in the role params , then youll get all the users irrespective of role)
 userRoutes.get(

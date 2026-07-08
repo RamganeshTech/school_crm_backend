@@ -71,6 +71,7 @@ export const generateAdmissionLink = async (req: any, res: Response) => {
             academicYear,
             formNumber: assignedFormNo, // Uses the exact number we just grabbed (Adm-2026-001)
             isSubmitted: false,
+            admissionBookId: activeBook._id,
             status: 'Pending'
         });
 

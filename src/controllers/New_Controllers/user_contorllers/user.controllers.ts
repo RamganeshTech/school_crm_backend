@@ -11,6 +11,7 @@ import type { Response } from "express";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import { transporter } from "../../../services/mail_services/forgotPasswordMail.js";
+import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 
 const JWT_SECRET = process.env.JWT_SECRET! // store in env
 
@@ -799,6 +800,62 @@ export const updateUser = async (req: RoleBasedRequest, res: Response) => {
   }
 };
 
+
+export const updateProfileImg = async (req: RoleBasedRequest, res: Response) => {
+  try {
+
+
+    const { id } = req.params
+    const file = req.file; // From Multer
+
+    if (!id) {
+      return res.status(404).json({ ok: false, message: "User id not found" });
+
+    }
+
+    let uploadedImage = null;
+    if (file) {
+      const uploadedData = await uploadFileToS3New(file);
+      // const type = file.mimetype.startsWith("image") ? "image" : "pdf";
+
+      uploadedImage = {
+        url: uploadedData.url,
+        key: uploadedData.key,
+        type: "image" as const,
+        originalName: file.originalname,
+        uploadedAt: new Date()
+      };
+    }
+
+
+    const user = await UserModel.findById(id)
+    if (!user) {
+      return res.status(404).json({ ok: false, message: "User not found" });
+    }
+
+    user.profileImage = uploadedImage
+    await user.save();
+
+
+    await createAuditLog(req, {
+      action: "update",
+      module: "user",
+      targetId: user._id,
+      description: `user updated profile image (${user._id})`,
+      status: "success"
+    });
+
+
+     return res.status(201).json({
+      message: "User profile updated successfully",
+      data: user,
+      ok: true
+    });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: "error in uploading the profile image", error: err?.message });
+  }
+}
 
 // ==========================================
 // 1. REQUEST PASSWORD RESET (Sends Email)

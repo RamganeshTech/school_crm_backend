@@ -59,6 +59,7 @@ import schoolAdmissionFormRoutes from './routes/New_Routes/school_routes/admissi
 import ProgressBarRoutes from './routes/New_Routes/progress_routes/progress.routes.js';
 import billBookRecordRoutes from './routes/New_Routes/school_routes/billBook_routes/billBookRecord.routes.js';
 import employeeProfileRoutes from './routes/New_Routes/user_routes/employeeProfile.routes.js';
+import globalSearchRoutes from './routes/New_Routes/globalsearch_routes/globalSearch.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -92,6 +93,7 @@ app.use('/api/student', studentRoutes)
 app.use('/api/studentrecord', studentRecordRoutes)
 app.use('/api/attendance', attendanceRoutes)
 app.use('/api/fee/receipt', feeReceiptRoutes)
+app.use('/api/global-search', globalSearchRoutes)
 
 app.use('/api/school-config/bill-book', schoolBillBookRoutes)
 app.use('/api/school-config/bill-record', billBookRecordRoutes)

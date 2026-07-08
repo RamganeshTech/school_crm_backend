@@ -1505,9 +1505,9 @@ export const applyConcession = async (req: RoleBasedRequest, res: Response) => {
             academicYear: currentYear
         }).session(session);
 
-        if (studentRecord && studentRecord?.isActive === false) {
-            throw new Error("Action Denied: This Student Record is INACTIVE. Cannot apply concession.");
-        }
+        // if (studentRecord && studentRecord?.isActive === false) {
+        //     throw new Error("Action Denied: This Student Record is INACTIVE. Cannot apply concession.");
+        // }
 
         // =========================================================
         // STRICT CONSTRAINT: BLOCK IF PAID > 0
@@ -1642,7 +1642,7 @@ export const applyConcession = async (req: RoleBasedRequest, res: Response) => {
             studentRecord.feeStructure = newStructure;
             studentRecord.dues = newDues; // Safe because paid is 0
             studentRecord.isFullyPaid = false;
-            studentRecord.isActive = true,
+            studentRecord.isActive = false,
 
                 studentRecord.concession = {
                     isApplied: true,
@@ -1676,7 +1676,7 @@ export const applyConcession = async (req: RoleBasedRequest, res: Response) => {
                 className: targetClassName, sectionName: targetSectionName,
                 newOld: targetNewOld,
                 isBusApplicable: targetIsBus, // Ensure this is saved
-                isActive: true,
+                isActive: false,
                 studentName: studentName || null,
 
                 feeStructure: newStructure,
@@ -1828,11 +1828,11 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
             academicYear: currentYear,
         }).session(session);
 
-        if (studentRecord && studentRecord?.isActive === false) {
-            throw new Error(
-                "Action Denied: This Student Record is INACTIVE. Cannot apply concession."
-            );
-        }
+        // if (studentRecord && studentRecord?.isActive === false) {
+        //     throw new Error(
+        //         "Action Denied: This Student Record is INACTIVE. Cannot apply concession."
+        //     );
+        // }
 
         // ── 7. BLOCK IF ALREADY PAID (feePaidv1) ────────────────────────
         if (studentRecord) {
@@ -1992,7 +1992,7 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
             // studentRecord.feePaidv1      = initialFeePaid;   // reset to 0 (paid guard above confirms it is already 0)
             // studentRecord.duesv1         = initialDues;
             studentRecord.isFullyPaid = false;
-            studentRecord.isActive = true;
+            studentRecord.isActive = false;
             studentRecord.concession = concessionPayload;
 
             await studentRecord.save({ session });
@@ -2008,7 +2008,7 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
                 sectionName: targetSectionName,
                 studentName: studentName || null,
                 newOld: targetNewOld,
-                isActive: true,
+                isActive: false,
                 isFullyPaid: false,
                 busPoint: busPoint || null,
 
@@ -2451,12 +2451,12 @@ export const approveStudentRecordConcession = async (req: RoleBasedRequest, res:
         }
 
         // 2. VALIDATION: Is the record active?
-        if (studentRecord.isActive === false) {
-            return res.status(400).json({
-                ok: false,
-                message: "Cannot approve concession: This student record is currently inactive."
-            });
-        }
+        // if (studentRecord.isActive === false) {
+        //     return res.status(400).json({
+        //         ok: false,
+        //         message: "Cannot approve concession: This student record is currently inactive."
+        //     });
+        // }
 
         // 3. VALIDATION: Does a concession actually exist to approve?
         if (!studentRecord.concession || !studentRecord.concession.isApplied || studentRecord.concession.inAmount <= 0) {
@@ -2657,6 +2657,7 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
             sectionId,
             isActive,
             phone,
+            feeStatus,
             // isBusApplicable,
             isFullyPaid,
             hasConcession,
@@ -2698,6 +2699,17 @@ export const getAllStudentRecordsV1 = async (req: RoleBasedRequest, res: Respons
         if (classId) postLookupMatch["recordData.classId"] = new mongoose.Types.ObjectId(classId as string);
         if (sectionId) postLookupMatch["recordData.sectionId"] = new mongoose.Types.ObjectId(sectionId as string);
         if (phone) postLookupMatch["recordData.mandatory.mobileNumber"] = phone;
+        if (feeStatus) {
+            if (feeStatus === "paid") {
+                postLookupMatch["recordData.feeStatus"] = feeStatus;
+            }
+            else {
+                // postLookupMatch["recordData.feeStatus"] = feeStatus;
+                postLookupMatch["recordData.feeStatus"] = { $ne: "paid" };
+            }
+
+        }
+
 
         if (isActive !== undefined) postLookupMatch["recordData.isActive"] = isActive === 'true';
         // if (isBusApplicable !== undefined) postLookupMatch["recordData.isBusApplicable"] = isBusApplicable === 'true';

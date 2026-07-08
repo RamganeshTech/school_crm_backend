@@ -9,7 +9,8 @@ addEmployeeDocuments,
 deleteEmployeeDocument,
 addSalarySlip,
 deleteSalarySlip,
-upsertEmployeeProfile} from "../../../controllers/New_Controllers/user_contorllers/employeeProfile.controller.js";
+upsertEmployeeProfile,
+deleteSpecificDocument} from "../../../controllers/New_Controllers/user_contorllers/employeeProfile.controller.js";
 import { upload } from "../../../utils/s4UploadsNew.js";
 
 
@@ -91,9 +92,19 @@ employeeProfileRoutes.post(
     multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
     upload.fields([
         { name: "documents",  },
+        { name: "panDocument", maxCount: 1 },
+        { name: "aadhaarDocument", maxCount: 1 },
+        { name: "appointmentLetter", maxCount: 1 }, // 👈 ADD THIS LINE
         { name: "salarySlipFile",  }
     ]),
     upsertEmployeeProfile
+);
+
+
+employeeProfileRoutes.delete(
+    "/:userId/delete-specific-document",
+    multiRoleAuth("correspondent", "administrator", "teacher", "accountant", "viceprincipal", "principal"),
+    deleteSpecificDocument
 );
 
 

@@ -61,8 +61,12 @@ export interface IEmployeeProfile extends Document {
         file?: IUpload | null;
     }[]
 
+    panDocument: IUpload
+    aadhaarDocument: IUpload
+    appointmentLetter: IUpload
+
     isActive: boolean;           // To handle resignations/terminations without deleting records
-    documents: IUpload
+    documents: IUpload[]
     createdAt: Date;
     updatedAt: Date;
 }
@@ -144,6 +148,10 @@ const EmployeeProfileSchema = new Schema<IEmployeeProfile>(
         },
 
         isActive: { type: Boolean, default: true },
+
+        panDocument: { type: uploadSchema, default: null },
+        aadhaarDocument: { type: uploadSchema, default: null },
+        appointmentLetter: { type: uploadSchema, default: null }, // 👈 ADD THIS LINE
 
         documents: { type: [uploadSchema], default: [] },
         salarySlips: { type: [salarySchema], default: [] }
