@@ -160,8 +160,8 @@ const EmployeeProfileSchema = new Schema<IEmployeeProfile>(
 );
 
 // Indexes for fast lookups
-EmployeeProfileSchema.index({ userId: 1 });
-EmployeeProfileSchema.index({ schoolId: 1, employeeNo: 1 }, { unique: true }); // Employee IDs must be unique within a specific school
+EmployeeProfileSchema.index({ userId: 1, schoolId: 1 });
+// EmployeeProfileSchema.index({ schoolId: 1, employeeNo: 1 }, { unique: true, sparse:true }); // Employee IDs must be unique within a specific school
 
 const EmployeeProfileModel = mongoose.models.EmployeeProfileModel as mongoose.Model<IEmployeeProfile> || mongoose.model<IEmployeeProfile>("EmployeeProfileModel", EmployeeProfileSchema);
 
