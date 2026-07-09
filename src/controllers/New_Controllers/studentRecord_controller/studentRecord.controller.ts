@@ -2936,6 +2936,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
             return res.status(400).json({ ok: false, message: "Academic Year is required" });
         }
 
+        let isCreated= false;
         // 3. Try to Fetch The Ledger (Student Record)
         const studentRecord = await StudentRecordModel.findOne({
             schoolId,
@@ -2954,7 +2955,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
             // --- SCENARIO A: Record Exists ---
             // Fetch All Receipts (Transactions) linked to this Ledger
 
-            console.log("if  condition ")
+            // console.log("if  condition ")
 
             const transactions = await FeeTransactionModel.find({
                 recordId: studentRecord._id
@@ -2975,10 +2976,12 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 receipts: transactions, // Attached array of receipts
                 isRecordCreated: true
             };
+
+            isCreated = true
         } else {
 
 
-            console.log("else condition ")
+            // console.log("else condition ")
             const feeConfig = await FeeStructureConfigModel.findOne({ schoolId })
 
             // // 2. Build the default fee map based on the dynamic feeHeads
@@ -3015,10 +3018,15 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 newOld: studentMain.newOld || "old",
 
                 // Use main profile class/section as fallback
-                classId: studentMain.currentClassId?._id || null,
-                sectionId: studentMain.currentSectionId?._id || null,
-                className: studentMain.currentClassId?.name || null,
-                sectionName: studentMain.currentSectionId?.name || null,
+                // classId: studentMain.currentClassId?._id || null,
+                // sectionId: studentMain.currentSectionId?._id || null,
+                // className: studentMain.currentClassId?.name || null,
+                // sectionName: studentMain.currentSectionId?.name || null,
+
+                 classId: null,
+                sectionId: null,
+                className: null,
+                sectionName: null,
 
                 // Default Financials (Zeros)
                 feeStructure: { admissionFee: 0, firstTermAmt: 0, secondTermAmt: 0, busFirstTermAmt: 0, busSecondTermAmt: 0 },
@@ -3044,12 +3052,16 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 isRecordCreated: false
 
             };
+
+            isCreated = false
+
         }
 
         // 5. Return Combined Data
         return res.status(200).json({
             ok: true,
-            data: responseData
+            data: responseData,
+            isStudentRecordCreated:isCreated
         });
 
     } catch (error: any) {
@@ -3307,9 +3319,9 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
                 $set: { newOld: newOld },
             },
             {
-                // upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
+                upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
                 new: true,                // Returns the newly updated/inserted doc
-                // setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
+                setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
             }
         );
 
@@ -3331,9 +3343,7 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
                 $set: { newOld: newOld },
             },
             {
-                // upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
                 new: true,                // Returns the newly updated/inserted doc
-                // setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
             }
         );
 
