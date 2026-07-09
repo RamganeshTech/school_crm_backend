@@ -7,6 +7,7 @@ import {
   revertFeeTransactionV1,
   toggleStudentRecordStatus, toggleStudentRecordStatusV1, updateConcessionDetails,
   updateConcessionDetailsV1,
+  updateStudentRecordNewOldType,
   uploadConcessionProof
 } from "../../../../controllers/New_Controllers/studentRecord_controller/studentRecord.controller.js";
 // import { upload } from "../../../../Utils/s3upload.js";
@@ -167,6 +168,14 @@ studentRecordRoutes.patch(
 
   toggleStudentRecordStatusV1
 );
+
+studentRecordRoutes.patch(
+  "/v1/update-student-type/:studentId/:schoolId",
+  multiRoleAuth("administrator", "correspondent", "accountant"),
+  featureGuard("studentRecord"),
+  updateStudentRecordNewOldType
+);
+
 
 
 

@@ -8,7 +8,7 @@ const globalSearchRoutes = express.Router();
 // Access: PlatformAdmin, Correspondent, Principal
 globalSearchRoutes.get(
   "/search",
-  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "parent"),
+  multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant", "teacher", "parent"),
   globalSearchController
 );
 

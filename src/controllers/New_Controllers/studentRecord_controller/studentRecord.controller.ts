@@ -973,26 +973,51 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         // console.log("activeBill book", activeBillBook)
 
         if (activeBillBook && activeBillBook?.billNumber) {
-            const lastTransaction = await FeeTransactionModel.findOne({
+            // const lastTransaction = await FeeTransactionModel.findOne({
+            //     schoolId,
+            //     academicYear: currentYear,
+            //     billNo: { $ne: null, $exists: true }
+            // })
+            //     .sort({ createdAt: -1 })
+            //     .session(session);
+
+            // // 2. Decide which number to use based on timestamps
+            // if (lastTransaction && lastTransaction.createdAt > activeBillBook.updatedAt) {
+            //     // Scenario A: Normal sequence. The last transaction is newer than the bill book config.
+            //     // We increment from the last transaction's bill number.
+            //     assignedBillNo = getNextAlphanumericSequence(lastTransaction.billNo);
+            // } else {
+            //     // Scenario B: First time use OR Staff manually edited the Bill Book config recently.
+            //     // We use the exact static number they configured.
+            //     assignedBillNo = activeBillBook.billNumber;
+            // }
+
+            // console.log("Assigned Bill Number for this receipt:", assignedBillNo);
+
+            // 🌟 FIX: Scope to THIS specific bill book via the ledger (BillBookRecordModel),
+            // not just schoolId + academicYear. This ensures reactivating an older book
+            // continues ITS sequence, not whichever book was used most recently.
+            const lastRecord = await BillBookRecordModel.findOne({
                 schoolId,
-                academicYear: currentYear,
-                billNo: { $ne: null, $exists: true }
+                billBookId: activeBillBook._id,
+                billNumber: { $ne: null, $exists: true }
             })
                 .sort({ createdAt: -1 })
                 .session(session);
 
-            // 2. Decide which number to use based on timestamps
-            if (lastTransaction && lastTransaction.createdAt > activeBillBook.updatedAt) {
-                // Scenario A: Normal sequence. The last transaction is newer than the bill book config.
-                // We increment from the last transaction's bill number.
-                assignedBillNo = getNextAlphanumericSequence(lastTransaction.billNo);
+            // 🌟 FIX: No more timestamp comparison. Presence/absence of a prior
+            // record for THIS book is the only thing that decides increment vs. seed.
+            if (lastRecord) {
+                // This book has generated bills before — continue its sequence.
+                assignedBillNo = getNextAlphanumericSequence(lastRecord.billNumber);
             } else {
-                // Scenario B: First time use OR Staff manually edited the Bill Book config recently.
-                // We use the exact static number they configured.
+                // Brand new book, OR this book has never generated a bill yet —
+                // use its configured starting number.
                 assignedBillNo = activeBillBook.billNumber;
             }
 
             console.log("Assigned Bill Number for this receipt:", assignedBillNo);
+
         }
 
 
@@ -3203,6 +3228,13 @@ export const toggleStudentRecordStatusV1 = async (req: RoleBasedRequest, res: Re
             }
         );
 
+        if (!updatedRecord) {
+            return res.status(404).json({
+                ok: false,
+                message: `student not found`,
+            });
+        }
+
 
 
         // 3. Create security audit log tracking
@@ -3231,3 +3263,107 @@ export const toggleStudentRecordStatusV1 = async (req: RoleBasedRequest, res: Re
         return res.status(500).json({ ok: false, message: "Internal server error" });
     }
 };
+
+
+
+
+export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { studentId, schoolId } = req.params;
+        const { newOld, academicYear } = req.body;
+
+        // const schoolId = req.user?.schoolId
+
+        // 1. Validate parameters
+        if (!studentId || studentId === "null") {
+            return res.status(400).json({
+                ok: false,
+                message: "studentId is required to update or initialize a student record."
+            });
+        }
+
+        // if (newOld !== "new" && newOld !== "old") {
+        //     return res.status(400).json({ ok: false, message: "newOld property only allows either new or old value only" });
+        // }
+
+
+        if (!['new', 'old'].includes(newOld)) {
+            return res.status(400).json({ ok: false, message: "newOld must be 'new' or 'old'" });
+        }
+
+        if (!academicYear) {
+            return res.status(400).json({ ok: false, message: "academicYear is required to target or upsert the correct row" });
+        }
+
+        // 2. Query, Update, and Upsert if not found
+        const updatedRecord = await StudentRecordModel.findOneAndUpdate(
+            {
+                schoolId: schoolId,
+                studentId: studentId,
+                academicYear: academicYear
+            },
+            {
+                // Fields to update regardless of whether it's a new or existing document
+                $set: { newOld: newOld },
+            },
+            {
+                // upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
+                new: true,                // Returns the newly updated/inserted doc
+                // setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
+            }
+        );
+
+
+
+
+        if (!updatedRecord) {
+            return res.status(404).json({
+                ok: false,
+                message: `student not found`,
+            });
+        }
+
+
+        await StudentNewModel.findByIdAndUpdate(
+            studentId,
+            {
+                // Fields to update regardless of whether it's a new or existing document
+                $set: { newOld: newOld },
+            },
+            {
+                // upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
+                new: true,                // Returns the newly updated/inserted doc
+                // setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
+            }
+        );
+
+
+        // 3. Create security audit log tracking
+        await createAuditLog(req, {
+            // action: updatedRecord.createdAt === updatedRecord.updatedAt ? "create" : "edit",
+            action: "edit",
+            module: "student_record",
+            targetId: updatedRecord._id,
+            description: `Student record updated to ${newOld} value for academic year ${academicYear} (${studentId})`,
+            status: "success"
+        });
+
+        return res.status(200).json({
+            ok: true,
+            message: `Student Record successfully updated ${newOld} processed for year ${academicYear}`,
+            data: {
+                _id: updatedRecord._id,
+                studentId: updatedRecord.studentId,
+                academicYear: updatedRecord.academicYear,
+                isActive: updatedRecord.isActive,
+                updatedRecord: updatedRecord
+            }
+        });
+
+    } catch (error: any) {
+        console.error("student record new old type update V1 Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error" });
+    }
+};
+
+

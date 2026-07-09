@@ -48,7 +48,7 @@ export const generateAdmissionLink = async (req: any, res: Response) => {
         const academicYear = school.currentAcademicYear;
 
         // ── PROCESS ADMISSION BOOK SEQUENCE ──
-        // let assignedFormNo = "PENDING-000";
+        let assignedFormNo = null;
 
         const activeBook = await AdmissionBookModel.findOne({
             schoolId, academicYear, isActive: true
@@ -59,11 +59,37 @@ export const generateAdmissionLink = async (req: any, res: Response) => {
         }
 
         // 🌟 Fix: Directly grab the current number from the active book
-        const assignedFormNo = activeBook.formNumber;
+        // const assignedFormNo = activeBook.formNumber;
 
         // 🌟 Fix: Immediately calculate the NEXT sequence and update the book in the database
-        activeBook.formNumber = getNextAlphanumericSequence(assignedFormNo);
-        await activeBook.save({ session }); // The book now stores Adm-2026-002 for the next person!
+        // activeBook.formNumber = getNextAlphanumericSequence(assignedFormNo);
+        // await activeBook.save({ session }); // The book now stores Adm-2026-002 for the next person!
+
+        // 🌟 1. Find the last generated admission form for this school and year
+        const lastForm = await AdmissionFormModel.findOne({
+            schoolId,
+            admissionBookId: activeBook._id,
+            academicYear,
+            formNumber: { $ne: null, $exists: true }
+        })
+        .sort({ createdAt: -1 })
+        .session(session);
+
+        // 🌟 2. Decide which number to use based on timestamps
+        if (lastForm) {
+            // Scenario A: Normal sequence. The last form is newer than the book config.
+            // We increment from the last form's number.
+            assignedFormNo = getNextAlphanumericSequence(lastForm.formNumber);
+            console.log("entering into if condition ")
+        } else {
+            // Scenario B: First time use OR Staff manually edited the Admission Book config recently.
+            // We use the exact static number configured in the book.
+            assignedFormNo = activeBook.formNumber;
+            console.log("entering into else condition ")
+
+        }
+
+        console.log("Assigned Form Number for this admission:", assignedFormNo);
 
         // ── 2. CREATE BLANK FORM ──
         const newAdmissionForm = new AdmissionFormModel({
@@ -85,7 +111,8 @@ export const generateAdmissionLink = async (req: any, res: Response) => {
             message: "Form generated successfully.",
             data: {
                 id: savedForm._id, // 🌟 Sent back so frontend can construct: /apply/ID
-                formNumber: savedForm.formNumber
+                formNumber: savedForm.formNumber,
+                path: `/public/apply/admission-form/single/${savedForm._id}`
             }
         });
 
@@ -204,6 +231,11 @@ export const getAllAdmissionForms = async (req: any, res: Response) => {
             query.status = status;
         }
 
+
+        if(academicYear){
+            query.academicYear = academicYear
+        }
+
         // 3. Search Filter (Student Name, Parent Name, Mobile Number)
         if (search) {
             query.$or = [
@@ -264,15 +296,19 @@ export const getAllAdmissionForms = async (req: any, res: Response) => {
 // ==========================================
 export const getAdmissionFormsForDropdown = async (req: any, res: Response) => {
     try {
-        const { schoolId, academicYear, search } = req.query;
+        const { schoolId, search  , academicYear} = req.query;
 
         // 🌟 Crucial: Only fetch Approved forms that are NOT yet linked to a student
         const query: any = {
             schoolId,
-            academicYear,
+            // academicYear,
             // status: 'Approved',
             studentId: null
         };
+
+        if(academicYear){
+            query.academicYear = academicYear
+        }
 
         if (search) {
             query.$or = [

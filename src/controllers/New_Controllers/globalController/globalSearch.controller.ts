@@ -6,6 +6,7 @@ import FeeTransactionModel from '../../../models/New_Model/FeeTransactionReceipt
 import BillBookRecordModel from '../../../models/New_Model/SchoolModel/billBook_model/BillRecord.model.js';
 import type { RoleBasedRequest } from '../../../utils/types.js';
 import AdmissionFormModel from '../../../models/New_Model/SchoolModel/admission_model/admissionForm.model.js';
+import { ExpenseModel } from '../../../models/New_Model/expense_model/expense.model.js';
 
 // ---------- Types ----------
 
@@ -147,12 +148,28 @@ const SEARCH_REGISTRY: SearchableConfig<any>[] = [
                 // 👇 if the form has converted into a student, send them straight to the student
                 // path: isAdmitted ? `/students/${a.studentId}` : `/admission-forms/${a._id}`,
                 // path: isAdmitted ? `/students/${a.studentId}` : `/dashboard/school?type=admissionbook}`,
-                path: `/dashboard/school?type=admissionbook?bookId=${a.admissionBookId}`,
+                path: `/dashboard/school?type=admissionbook&admissionBookId=${a.admissionBookId}&admissionFormId=${a._id}`,
 
                 icon: isAdmitted ? 'fa-solid fa-user-graduate' : 'fa-solid fa-file-signature',
             };
         },
     },
+    {
+        type: 'expense',
+        model: ExpenseModel,
+        searchFields: ['expenseNo'],
+        selectFields: '_id expenseNo amount category', // adjust selectFields to whatever fields exist on IExpense
+        icon: 'fa-solid fa-money-bill-wave',
+        mapResult: (e) => ({
+            type: 'expense',
+            _id: e._id.toString(),
+            uniqueId: e.expenseNo,
+            title: `Expense ${e.expenseNo}`,
+            subtitle: e.category ? `${e.category}${e.amount ? ` · ₹${e.amount}` : ''}` : "",
+            path: `/dashboard/expense/single/${e._id}`,
+            icon: 'fa-solid fa-money-bill-wave',
+        }),
+    }
 ];
 
 const LIMIT_PER_TYPE = 5;

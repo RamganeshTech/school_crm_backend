@@ -45,7 +45,7 @@ export interface IAdmissionForm extends Document {
 
 const AdmissionFormSchema = new Schema<IAdmissionForm>({
     schoolId: { type: Schema.Types.ObjectId, ref: "SchoolModel", required: true },
-    // academicYear: { type: String, required: true },
+    academicYear: { type: String, required: true },
     formNumber: { type: String, required: true },
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: "StudentNewModel", default: null },
     admissionBookId: {type: mongoose.Schema.Types.ObjectId, ref: "AdmissionBookModel", default: null},
