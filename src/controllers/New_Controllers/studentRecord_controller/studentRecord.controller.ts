@@ -2936,7 +2936,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
             return res.status(400).json({ ok: false, message: "Academic Year is required" });
         }
 
-        let isCreated= false;
+        let isCreated = false;
         // 3. Try to Fetch The Ledger (Student Record)
         const studentRecord = await StudentRecordModel.findOne({
             schoolId,
@@ -3023,7 +3023,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
                 // className: studentMain.currentClassId?.name || null,
                 // sectionName: studentMain.currentSectionId?.name || null,
 
-                 classId: null,
+                classId: null,
                 sectionId: null,
                 className: null,
                 sectionName: null,
@@ -3061,7 +3061,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
         return res.status(200).json({
             ok: true,
             data: responseData,
-            isStudentRecordCreated:isCreated
+            isStudentRecordCreated: isCreated
         });
 
     } catch (error: any) {
@@ -3307,13 +3307,30 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
             return res.status(400).json({ ok: false, message: "academicYear is required to target or upsert the correct row" });
         }
 
+        // 2. FINANCIAL SAFETY LOCK (Prevent switching type if fees are paid)
+        const filter = { schoolId, studentId, academicYear };
+        const existingRecord = await StudentRecordModel.findOne(filter);
+
+        if (existingRecord) {
+            const paidObj: Map<string, number> =
+                existingRecord?.feePaidv1 || new Map<string, number>();
+
+            const totalPaid = [...(paidObj instanceof Map ? paidObj?.values() : Object.values(paidObj))]
+                .reduce<number>((sum, v) => sum + Number(v || 0), 0);
+
+            const isTypeChanging = existingRecord.newOld && existingRecord.newOld !== newOld;
+
+            if (totalPaid > 0 && isTypeChanging) {
+                return res.status(400).json({
+                    ok: false,
+                    message: `Action Blocked: Student has already paid ₹${totalPaid}. You cannot change New/Old type without reverting payments first.`
+                });
+            }
+        }
+
         // 2. Query, Update, and Upsert if not found
         const updatedRecord = await StudentRecordModel.findOneAndUpdate(
-            {
-                schoolId: schoolId,
-                studentId: studentId,
-                academicYear: academicYear
-            },
+            filter,
             {
                 // Fields to update regardless of whether it's a new or existing document
                 $set: { newOld: newOld },
