@@ -1853,6 +1853,10 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
             academicYear: currentYear,
         }).session(session);
 
+        if(!studentRecord){
+            throw new Error("Student record not found, apply concession once after assigning the student to a class")
+        }
+
         // if (studentRecord && studentRecord?.isActive === false) {
         //     throw new Error(
         //         "Action Denied: This Student Record is INACTIVE. Cannot apply concession."
