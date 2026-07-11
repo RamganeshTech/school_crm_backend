@@ -823,9 +823,10 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             let discount = Number(studentRecord.concession.inAmount || 0);
 
             if (discount > 0) {
-                const reversedHeads = [...orderedHeads].reverse(); // Target later terms first
-
-                for (const head of reversedHeads) {
+                // const reversedHeads = [...orderedHeads].reverse(); // Target later terms first
+                //  changed to deduct the money from the frist term itselfs
+                
+                for (const head of orderedHeads) {
                     if (discount <= 0) break;
 
                     // 🌟 Targeting feeStructurev1
