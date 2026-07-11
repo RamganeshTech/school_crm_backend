@@ -23,7 +23,7 @@ const billBookRecordRoutes = express.Router();
 // 2. Get all Bill Books for a specific school
 billBookRecordRoutes.get(
     '/get',
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "accountant"),
     getBillRecords
 );
 

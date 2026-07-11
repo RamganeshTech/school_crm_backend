@@ -86,7 +86,7 @@ export const createQuizAttempt = async (req: RoleBasedRequest, res: Response) =>
 export const getAllAttempts = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { quizId, classId, sectionId, studentId, page = 1, limit = 10 } = req.query;
-        const schoolId = req.user?.schoolId;
+        const schoolId = req?.query?.schoolId ||  req.user?.schoolId;
 
         const filter: any = { schoolId };
         if (quizId) filter.quizId = quizId;
