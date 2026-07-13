@@ -34,8 +34,8 @@ const uploadSchema = new Schema<IUpload>({
     key: { type: String, required: true },
     url: { type: String, required: true },
     originalName: String,
-    uploadedAt: { type: Date, default: () => Date.now() }
-});
+    uploadedAt: { type: Date, default: new Date() }
+}, {_id:true});
 
 const announcementSchema = new Schema<IAnnouncement>(
     {

@@ -60,6 +60,8 @@ import ProgressBarRoutes from './routes/New_Routes/progress_routes/progress.rout
 import billBookRecordRoutes from './routes/New_Routes/school_routes/billBook_routes/billBookRecord.routes.js';
 import employeeProfileRoutes from './routes/New_Routes/user_routes/employeeProfile.routes.js';
 import globalSearchRoutes from './routes/New_Routes/globalsearch_routes/globalSearch.routes.js';
+import driverRoutes from './routes/New_Routes/transport_routes/driver.routes.js';
+import busRoutes from './routes/New_Routes/transport_routes/bus.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -124,6 +126,9 @@ app.use('/api/deletearchive', deleteArchiveRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/subscription', subscriptionRoutes)
 // not mentioned in the docuemntation
+
+app.use('/api/transport/driver', driverRoutes)
+app.use('/api/transport/bus', busRoutes)
 
 
 app.use('/api/download', downloadRoutes)
