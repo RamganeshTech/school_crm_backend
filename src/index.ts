@@ -62,6 +62,8 @@ import employeeProfileRoutes from './routes/New_Routes/user_routes/employeeProfi
 import globalSearchRoutes from './routes/New_Routes/globalsearch_routes/globalSearch.routes.js';
 import driverRoutes from './routes/New_Routes/transport_routes/driver.routes.js';
 import busRoutes from './routes/New_Routes/transport_routes/bus.routes.js';
+import dailyTripLogRoutes from './routes/New_Routes/transport_routes/dailyTripLog.routes.js';
+import fuelLogRoutes from './routes/New_Routes/transport_routes/fuelLog.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -129,6 +131,8 @@ app.use('/api/subscription', subscriptionRoutes)
 
 app.use('/api/transport/driver', driverRoutes)
 app.use('/api/transport/bus', busRoutes)
+app.use('/api/transport/dailytriplog', dailyTripLogRoutes)
+app.use('/api/transport/fuellog', fuelLogRoutes)
 
 
 app.use('/api/download', downloadRoutes)

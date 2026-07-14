@@ -1,57 +1,94 @@
-import { Schema, model, Types, Document } from "mongoose";
-
-// ---------- Types ----------
+import { Schema, model, Document, Types } from "mongoose";
 
 export interface IFuelLog extends Document {
-  schoolId: Types.ObjectId; // tenant scoping
-  busId: Types.ObjectId; // ref Bus
-
-  date: Date;
-
-  litres: number | null;
-  amount: number | null;
-  ratePerLitre: number | null; // auto-calculated: amount / litres
-
-  odometerAtFill: number | null;
-  billReference: string | null;
-
-  enteredBy: string | null;
-
+  schoolId: Types.ObjectId;
+  busId: Types.ObjectId;
+  fuelLogNo: string | null;
+  date: Date | null;
+  enteredBy: Types.ObjectId | null;
+  odometerReading: number | null;
+  fuelQuantity: number | null;
+  pricePerLiter: number | null;
+  totalAmount: number | null;
+  fuelStation: string | null;
+  paymentMode: string | null;
+  fuelBillNo: string | null;
+  academicYear: string | null;
+  notes: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// ---------- Schema ----------
-
-const FuelLogSchema = new Schema<IFuelLog>(
+const fuelLogSchema = new Schema<IFuelLog>(
   {
-    schoolId: { type: Schema.Types.ObjectId, ref: "SchoolModel", required: true,  },
-    busId: { type: Schema.Types.ObjectId, ref: "BusModel", required: true },
-
-    date: { type: Date, required:true },
-
-    litres: { type: Number, default: null },
-    amount: { type: Number, default: null },
-    ratePerLitre: { type: Number, default: null },
-
-    odometerAtFill: { type: Number, default: null },
-    billReference: { type: String, default: null },
-
-    enteredBy: { type: String, default: null },
+    schoolId: {
+      type: Schema.Types.ObjectId,
+      ref: "SchoolModel",
+      required: true,
+    },
+    busId: {
+      type: Schema.Types.ObjectId,
+      ref: "BusModel",
+      required: true,
+    },
+    fuelLogNo: { type: String, default: null },
+    date: {
+      type: Date,
+      default: null,
+    },
+    enteredBy: {
+      type: Schema.Types.ObjectId,
+      ref: "UserModel",
+      default: null,
+    },
+    odometerReading: { type: Number, default: null }, //before filling
+    fuelQuantity: { type: Number, default: null },
+    pricePerLiter: { type: Number, default: null },
+    totalAmount: { type: Number, default: null },
+    fuelStation: { type: String, default: null },
+    paymentMode: { type: String, default: null },
+    fuelBillNo: { type: String, default: null },
+    academicYear: { type: String, default: null },
+    notes: { type: String, default: null },
   },
   { timestamps: true }
 );
 
-FuelLogSchema.index({ schoolId: 1, busId: 1 });
+// Generate fuelLogNo only on creation, scoped per school per year
+fuelLogSchema.pre("save", async function (next) {
+  if (!this.isNew) return next();
 
-// auto-calc rate per litre whenever both amount and litres are present
-FuelLogSchema.pre("save", function (next) {
-  if (this.amount !== null && this.litres !== null && this.litres !== 0) {
-    this.ratePerLitre = Math.round((this.amount / this.litres) * 100) / 100;
-  } else {
-    this.ratePerLitre = null;
+  try {
+    const currentYear = new Date().getFullYear();
+    const Model = this.constructor as typeof FuelLogModel;
+
+    const lastLog = await Model.findOne({
+      schoolId: this.schoolId,
+      fuelLogNo: { $regex: `^FL-${currentYear}-` },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let nextSeq = 1;
+    if (lastLog?.fuelLogNo) {
+      const lastSeq = parseInt((lastLog.fuelLogNo as any).split("-")[2], 10);
+      if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+    }
+
+    const paddedSeq =
+      nextSeq < 10000 ? String(nextSeq).padStart(4, "0") : String(nextSeq);
+
+    this.fuelLogNo = `FL-${currentYear}-${paddedSeq}`;
+    next();
+  } catch (err) {
+    next(err as Error);
   }
-  next();
 });
 
-export const FuelLogModel = model<IFuelLog>("FuelLogModel", FuelLogSchema);
+
+// Prevent duplicate log entry for same bus, same date, same school
+fuelLogSchema.index(
+  { schoolId: 1, busId: 1 },
+);
+
+export const FuelLogModel = model<IFuelLog>("FuelLogModel", fuelLogSchema);

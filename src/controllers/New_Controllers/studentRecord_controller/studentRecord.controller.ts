@@ -3284,12 +3284,126 @@ export const toggleStudentRecordStatusV1 = async (req: RoleBasedRequest, res: Re
 
 
 
+// export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: Response) => {
+//     try {
+//         const { studentId, schoolId } = req.params;
+//         const { newOld, academicYear } = req.body;
+
+//         // const schoolId = req.user?.schoolId
+
+//         // 1. Validate parameters
+//         if (!studentId || studentId === "null") {
+//             return res.status(400).json({
+//                 ok: false,
+//                 message: "studentId is required to update or initialize a student record."
+//             });
+//         }
+
+//         // if (newOld !== "new" && newOld !== "old") {
+//         //     return res.status(400).json({ ok: false, message: "newOld property only allows either new or old value only" });
+//         // }
+
+
+//         if (!['new', 'old'].includes(newOld)) {
+//             return res.status(400).json({ ok: false, message: "newOld must be 'new' or 'old'" });
+//         }
+
+//         if (!academicYear) {
+//             return res.status(400).json({ ok: false, message: "academicYear is required to target or upsert the correct row" });
+//         }
+
+//         // 2. FINANCIAL SAFETY LOCK (Prevent switching type if fees are paid)
+//         const filter = { schoolId, studentId, academicYear };
+//         const existingRecord = await StudentRecordModel.findOne(filter);
+
+//         if (existingRecord) {
+//             const paidObj: Map<string, number> =
+//                 existingRecord?.feePaidv1 || new Map<string, number>();
+
+//             const totalPaid = [...(paidObj instanceof Map ? paidObj?.values() : Object.values(paidObj))]
+//                 .reduce<number>((sum, v) => sum + Number(v || 0), 0);
+
+//             const isTypeChanging = existingRecord.newOld && existingRecord.newOld !== newOld;
+
+//             if (totalPaid > 0 && isTypeChanging) {
+//                 return res.status(400).json({
+//                     ok: false,
+//                     message: `Action Blocked: Student has already paid ₹${totalPaid}. You cannot change New/Old type without reverting payments first.`
+//                 });
+//             }
+//         }
+
+//         // 2. Query, Update, and Upsert if not found
+//         const updatedRecord = await StudentRecordModel.findOneAndUpdate(
+//             filter,
+//             {
+//                 // Fields to update regardless of whether it's a new or existing document
+//                 $set: { newOld: newOld },
+//             },
+//             {
+//                 upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
+//                 new: true,                // Returns the newly updated/inserted doc
+//                 setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
+//             }
+//         );
+
+
+
+
+//         if (!updatedRecord) {
+//             return res.status(404).json({
+//                 ok: false,
+//                 message: `student not found`,
+//             });
+//         }
+
+
+//         await StudentNewModel.findByIdAndUpdate(
+//             studentId,
+//             {
+//                 // Fields to update regardless of whether it's a new or existing document
+//                 $set: { newOld: newOld },
+//             },
+//             {
+//                 new: true,                // Returns the newly updated/inserted doc
+//             }
+//         );
+
+
+//         // 3. Create security audit log tracking
+//         await createAuditLog(req, {
+//             // action: updatedRecord.createdAt === updatedRecord.updatedAt ? "create" : "edit",
+//             action: "edit",
+//             module: "student_record",
+//             targetId: updatedRecord._id,
+//             description: `Student record updated to ${newOld} value for academic year ${academicYear} (${studentId})`,
+//             status: "success"
+//         });
+
+//         return res.status(200).json({
+//             ok: true,
+//             message: `Student Record successfully updated ${newOld} processed for year ${academicYear}`,
+//             data: {
+//                 _id: updatedRecord._id,
+//                 studentId: updatedRecord.studentId,
+//                 academicYear: updatedRecord.academicYear,
+//                 isActive: updatedRecord.isActive,
+//                 updatedRecord: updatedRecord
+//             }
+//         });
+
+//     } catch (error: any) {
+//         console.error("student record new old type update V1 Error:", error);
+//         return res.status(500).json({ ok: false, message: "Internal server error" });
+//     }
+// };
+
+
+
 export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { studentId, schoolId } = req.params;
         const { newOld, academicYear } = req.body;
-
-        // const schoolId = req.user?.schoolId
 
         // 1. Validate parameters
         if (!studentId || studentId === "null") {
@@ -3299,11 +3413,6 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
             });
         }
 
-        // if (newOld !== "new" && newOld !== "old") {
-        //     return res.status(400).json({ ok: false, message: "newOld property only allows either new or old value only" });
-        // }
-
-
         if (!['new', 'old'].includes(newOld)) {
             return res.status(400).json({ ok: false, message: "newOld must be 'new' or 'old'" });
         }
@@ -3312,13 +3421,15 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
             return res.status(400).json({ ok: false, message: "academicYear is required to target or upsert the correct row" });
         }
 
-        // 2. FINANCIAL SAFETY LOCK (Prevent switching type if fees are paid)
         const filter = { schoolId, studentId, academicYear };
         const existingRecord = await StudentRecordModel.findOne(filter);
+        
+        // Prepare the payload dynamically with the base update
+        let updatePayload: any = { newOld: newOld };
 
         if (existingRecord) {
-            const paidObj: Map<string, number> =
-                existingRecord?.feePaidv1 || new Map<string, number>();
+            // 2. FINANCIAL SAFETY LOCK (Prevent switching type if fees are paid)
+            const paidObj: Map<string, number> = existingRecord?.feePaidv1 || new Map<string, number>();
 
             const totalPaid = [...(paidObj instanceof Map ? paidObj?.values() : Object.values(paidObj))]
                 .reduce<number>((sum, v) => sum + Number(v || 0), 0);
@@ -3331,24 +3442,67 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
                     message: `Action Blocked: Student has already paid ₹${totalPaid}. You cannot change New/Old type without reverting payments first.`
                 });
             }
+
+            // 3. CHECK FOR EXISTING FEE STRUCTURE KEYS
+            // Safely check if feeStructureV1 has properties (handling both Map and plain Object)
+            const existingFees = existingRecord.feeStructurev1;
+            let hasExistingFeeStructure = false;
+
+            if (existingFees) {
+                if (existingFees instanceof Map) {
+                    hasExistingFeeStructure = existingFees.size > 0;
+                } else {
+                    hasExistingFeeStructure = Object.keys(existingFees).length > 0;
+                }
+            }
+
+            // 4. FETCH AND UPDATE FEE STRUCTURE
+            // ONLY if type is changing, no fees are paid, AND the student already had a populated fee structure
+            if (isTypeChanging && totalPaid === 0 && hasExistingFeeStructure) {
+                const classId = existingRecord.classId;
+
+                if (!classId) {
+                    return res.status(400).json({ 
+                        ok: false, 
+                        message: "Student record is missing classId. Cannot fetch fee structure." 
+                    });
+                }
+
+                // Find the fee structure for this specific class and the new type ('new' or 'old')
+                const feeStructure = await FeeStructureModel.findOne({
+                    schoolId,
+                    classId,
+                    type: newOld 
+                });
+
+                if (!feeStructure) {
+                    return res.status(404).json({
+                        ok: false,
+                        message: `Fee structure not found for type '${newOld}' in this class. Please create it first.`
+                    });
+                }
+
+                // Grab the feeHeads map
+                const newFeeHeads = feeStructure.feeHeads || {};
+
+                // Overwrite the existing structures in the payload
+                updatePayload.feeStructurev1 = newFeeHeads;
+                updatePayload.duesv1 = newFeeHeads; // Total paid is 0, so dues equal the full structure
+            }
         }
 
-        // 2. Query, Update, and Upsert if not found
+        // 5. Query, Update, and Upsert if not found
         const updatedRecord = await StudentRecordModel.findOneAndUpdate(
             filter,
             {
-                // Fields to update regardless of whether it's a new or existing document
-                $set: { newOld: newOld },
+                $set: updatePayload,
             },
             {
-                upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
+                upsert: true,             // Creates the document if it doesn't exist
                 new: true,                // Returns the newly updated/inserted doc
                 setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
             }
         );
-
-
-
 
         if (!updatedRecord) {
             return res.status(404).json({
@@ -3357,22 +3511,19 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
             });
         }
 
-
+        // 6. Sync the newOld status to the primary Student profile
         await StudentNewModel.findByIdAndUpdate(
             studentId,
             {
-                // Fields to update regardless of whether it's a new or existing document
                 $set: { newOld: newOld },
             },
             {
-                new: true,                // Returns the newly updated/inserted doc
+                new: true, 
             }
         );
 
-
-        // 3. Create security audit log tracking
+        // 7. Create security audit log tracking
         await createAuditLog(req, {
-            // action: updatedRecord.createdAt === updatedRecord.updatedAt ? "create" : "edit",
             action: "edit",
             module: "student_record",
             targetId: updatedRecord._id,
@@ -3382,7 +3533,7 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
 
         return res.status(200).json({
             ok: true,
-            message: `Student Record successfully updated ${newOld} processed for year ${academicYear}`,
+            message: `Student Record successfully updated. ${newOld} processed for year ${academicYear}`,
             data: {
                 _id: updatedRecord._id,
                 studentId: updatedRecord.studentId,
@@ -3397,5 +3548,3 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
         return res.status(500).json({ ok: false, message: "Internal server error" });
     }
 };
-
-

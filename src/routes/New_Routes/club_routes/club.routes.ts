@@ -122,7 +122,12 @@ clubRoutes.get('/video/get/:id',
 
 clubRoutes.post('/video/upload',
     multiRoleAuth("correspondent", "administrator", "teacher"),
-    upload.single('video'),
+    // upload.single('video'),
+
+    upload.fields([
+        { name: 'video', maxCount: 1 }, 
+        { name: 'pdf' } // Increase maxCount if you want to allow multiple PDFs at once
+    ]),
 
     featureGuard("club"),
     createClubVideo);

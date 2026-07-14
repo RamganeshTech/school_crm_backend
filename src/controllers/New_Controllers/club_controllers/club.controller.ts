@@ -14,11 +14,25 @@ import { archiveData } from "../deleteArchieve_controller/deleteArchieve.control
 export const formatUploadData = async (file:any) => {
     if (!file) return null;
     const uploadData = await uploadFileToS3New(file);
-    const type = file.mimetype.startsWith("image") ? "image" : "video";
+    // const type = file.mimetype.startsWith("image") ? "image" : "video";
+
+    // Determine the correct file type based on the mimetype
+    let fileType = "unknown";
+    if (file.mimetype.startsWith("image")) {
+        fileType = "image";
+    } else if (file.mimetype.startsWith("video")) {
+        fileType = "video";
+    } else if (file.mimetype === "application/pdf") {
+        fileType = "pdf";
+    } else {
+        // Fallback for other document types (e.g., word, excel)
+        fileType = "document"; 
+    }
+    
     return {
         url: uploadData.url,
         key: uploadData.key,
-        type: type,
+        type: fileType,
         originalName: file.originalname,
         uploadedAt: new Date()
     };

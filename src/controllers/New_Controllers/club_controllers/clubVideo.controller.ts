@@ -36,15 +36,43 @@ export const createClubVideo = async (req: RoleBasedRequest, res: Response) => {
         }
 
 
+
+        // 1. EXTRACT FILES FROM req.files
+        // Cast as a dictionary of file arrays for TypeScript
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        
+        const videoFile = files?.['video']?.[0]; // Get the single video file
+        const pdfFiles = files?.['pdf'] || [];   // Get the array of PDF files (if any)
+
+
         const clubExists = await ClubMainModel.findById(clubId);
         if (!clubExists) {
             return res.status(404).json({ ok: false, message: "The selected club does not exist." });
         }
 
+        // let videoDocument = null;
+        // if (file) {
+        //     videoDocument = await formatUploadData(file);
+        // }
+
+
+        
+
+        // 2. FORMAT UPLOAD DATA FOR VIDEO
         let videoDocument = null;
-        if (file) {
-            videoDocument = await formatUploadData(file);
+        if (videoFile) {
+            videoDocument = await formatUploadData(videoFile);
         }
+
+        // 3. FORMAT UPLOAD DATA FOR PDFs
+        let pdfDocuments:any = [];
+        if (pdfFiles.length > 0) {
+            // Using Promise.all to format multiple PDFs concurrently if there is more than 1
+            pdfDocuments = await Promise.all(
+                pdfFiles.map((pdf) => formatUploadData(pdf))
+            );
+        }
+        
 
         // 3. Save All to DB (Bulk Insert)
         const savedVideos = await ClubVideoModel.create({
@@ -54,6 +82,7 @@ export const createClubVideo = async (req: RoleBasedRequest, res: Response) => {
             topic: topic ? topic?.trim() : null,
             level: level || 'general',
             video: videoDocument,
+            pdfs: pdfDocuments,
             uploadedBy: req.user?._id
         });
 
