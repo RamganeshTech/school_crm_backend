@@ -13,9 +13,7 @@ import { archiveData } from "../deleteArchieve_controller/deleteArchieve.control
 export const createDailyTripLog = async (req: RoleBasedRequest, res: Response) => {
     try {
 
-        const { busId, date, openingOdometer, closingOdometer, notes } =
-            req.body;
-        const schoolId = req.user?.schoolId;
+        const { busId, date, openingOdometer, closingOdometer, notes, schoolId } = req.body;
         const enteredBy = req.user?._id;
 
         if (!busId) {
@@ -49,14 +47,14 @@ export const createDailyTripLog = async (req: RoleBasedRequest, res: Response) =
         if (isNaN(opening) || isNaN(closing)) {
             return res.status(400).json({
                 ok: false,
-                message: "openingOdometer and closingOdometer must be valid numbers",
+                message: "Opening Odometer and Closing Odometer must be valid numbers",
             });
         }
 
         if (opening >= closing) {
             return res.status(400).json({
                 ok: false,
-                message: "closingOdometer must be greater than openingOdometer",
+                message: "Closing Odometer must be greater than Opening Odometer",
             });
         }
 
@@ -69,6 +67,7 @@ export const createDailyTripLog = async (req: RoleBasedRequest, res: Response) =
         }
 
         const kmRun = parseFloat((closing - opening).toFixed(2));
+        // {Number((Number(formData.closingOdometer) - Number(formData.openingOdometer)).toFixed(2))} km
 
         const newLog = await DailyTripLogModel.create({
             schoolId,
@@ -110,9 +109,8 @@ export const updateDailyTripLog = async (
 ) => {
     try {
         const { id } = req.params;
-        const { busId, date, openingOdometer, closingOdometer, notes } =
+        const { busId, date, openingOdometer, closingOdometer, notes, schoolId } =
             req.body;
-        const schoolId = req.user?.schoolId;
 
         const existingLog = await DailyTripLogModel.findOne({
             _id: id,
@@ -138,14 +136,14 @@ export const updateDailyTripLog = async (
         if (isNaN(opening) || isNaN(closing)) {
             return res.status(400).json({
                 ok: false,
-                message: "openingOdometer and closingOdometer must be valid numbers",
+                message: "Opening Odometer and Closing Odometer must be valid numbers",
             });
         }
 
         if (opening >= closing) {
             return res.status(400).json({
                 ok: false,
-                message: "closingOdometer must be greater than openingOdometer",
+                message: "Closing Odometer must be greater than Opening Odometer",
             });
         }
 
@@ -187,8 +185,8 @@ export const getAllDailyTripLogs = async (
     try {
         const { busId, academicYear, schoolId } = req.query;
         const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 20;
-        const skip = (page - 1) * limit;
+        const limit = req.query.limit || 20;
+        const skip = (page - 1) * parseInt(limit);
 
         const filter: Record<string, any> = { schoolId };
         if (busId) filter.busId = busId;
@@ -200,7 +198,7 @@ export const getAllDailyTripLogs = async (
                 .populate("enteredBy", "userName _id")
                 .sort({ date: -1, createdAt: -1 })
                 .skip(skip)
-                .limit(limit)
+                .limit(parseInt(limit))
                 .lean(),
             DailyTripLogModel.countDocuments(filter),
         ]);
@@ -214,8 +212,9 @@ export const getAllDailyTripLogs = async (
             pagination: {
                 page,
                 limit,
-                total,
+                total, 
                 hasMore,
+                totalPages: Math.ceil(total / parseInt(limit)),
             },
         });
     } catch (error: any) {
@@ -280,7 +279,7 @@ export const deleteDailyTripLog = async (
         // 2. CALL THE ARCHIVE UTILITY
         await archiveData({
             schoolId: log.schoolId,
-            category: "annoucement",
+            category: "dailyTripLog",
             originalId: log._id,
             deletedData: log.toObject(), // Convert Mongoose doc to plain object
             deletedBy: req?.user?._id! || null,

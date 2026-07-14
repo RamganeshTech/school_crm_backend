@@ -1,9 +1,4 @@
 import { type Response } from "express";
-// import { RoleBasedRequest } from "../types/request.types"; // adjust path as needed
-// import { FuelLogModel } from "../models/fuelLog.model";
-// import { SchoolModel } from "../models/school.model"; // adjust path as needed
-// import { createAuditLog } from "../utils/auditLog"; // adjust path as needed
-// import { archiveData } from "../utils/archiveData"; // adjust path as needed
 
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
@@ -119,7 +114,7 @@ export const createFuelLog = async (req: RoleBasedRequest, res: Response) => {
 export const updateFuelLog = async (req: RoleBasedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const schoolId = req.body.schoolId || req.query.schoolId;
+    const schoolId = req.body.schoolId;
     const {
       busId,
       date,
@@ -260,7 +255,7 @@ export const getAllFuelLogs = async (req: RoleBasedRequest, res: Response) => {
 export const getFuelLogById = async (req: RoleBasedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const schoolId = req.query.schoolId || req.body.schoolId;
+    const schoolId = req.query.schoolId 
 
     if (!schoolId) {
       return res.status(400).json({
@@ -297,16 +292,16 @@ export const getFuelLogById = async (req: RoleBasedRequest, res: Response) => {
 export const deleteFuelLog = async (req: RoleBasedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const schoolId = req.query.schoolId || req.body.schoolId;
+    // const schoolId = req.query.schoolId || req.body.schoolId;
 
-    if (!schoolId) {
-      return res.status(400).json({
-        ok: false,
-        message: "schoolId is required",
-      });
-    }
+    // if (!schoolId) {
+    //   return res.status(400).json({
+    //     ok: false,
+    //     message: "schoolId is required",
+    //   });
+    // }
 
-    const log = await FuelLogModel.findOneAndDelete({ _id: id, schoolId });
+    const log = await FuelLogModel.findOneAndDelete({ _id: id });
 
     if (!log) {
       return res.status(404).json({
