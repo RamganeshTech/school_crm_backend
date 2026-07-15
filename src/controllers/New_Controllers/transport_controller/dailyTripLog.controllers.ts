@@ -183,14 +183,73 @@ export const getAllDailyTripLogs = async (
     res: Response
 ) => {
     try {
-        const { busId, academicYear, schoolId } = req.query;
+        const {
+            busId,
+            academicYear,
+            schoolId,
+            search,
+            fromDate,
+            toDate,
+            minKmRun,
+            maxKmRun,
+            minOpeningOdometer,
+            maxOpeningOdometer,
+            minClosingOdometer,
+            maxClosingOdometer,
+        } = req.query;
+
         const page = parseInt(req.query.page as string) || 1;
-        const limit = req.query.limit || 20;
-        const skip = (page - 1) * parseInt(limit);
+        const limit = parseInt(req.query.limit as string) || 20;
+        const skip = (page - 1) * limit;
+
+        if (!schoolId) {
+            return res.status(400).json({
+                ok: false,
+                message: "schoolId is required",
+            });
+        }
 
         const filter: Record<string, any> = { schoolId };
         if (busId) filter.busId = busId;
         if (academicYear) filter.academicYear = academicYear;
+
+        // Date range
+        if (fromDate || toDate) {
+            filter.date = {};
+            if (fromDate) filter.date.$gte = new Date(fromDate as string);
+            if (toDate) filter.date.$lte = new Date(toDate as string);
+        }
+
+        // kmRun range
+        if (minKmRun || maxKmRun) {
+            filter.kmRun = {};
+            if (minKmRun) filter.kmRun.$gte = Number(minKmRun);
+            if (maxKmRun) filter.kmRun.$lte = Number(maxKmRun);
+        }
+
+        // opening odometer range
+        if (minOpeningOdometer || maxOpeningOdometer) {
+            filter.openingOdometer = {};
+            if (minOpeningOdometer) filter.openingOdometer.$gte = Number(minOpeningOdometer);
+            if (maxOpeningOdometer) filter.openingOdometer.$lte = Number(maxOpeningOdometer);
+        }
+
+        // closing odometer range
+        if (minClosingOdometer || maxClosingOdometer) {
+            filter.closingOdometer = {};
+            if (minClosingOdometer) filter.closingOdometer.$gte = Number(minClosingOdometer);
+            if (maxClosingOdometer) filter.closingOdometer.$lte = Number(maxClosingOdometer);
+        }
+
+        // search: dailyLogNo + notes
+        if (search) {
+            const searchRegex = new RegExp(String(search).trim(), "i");
+            filter.$or = [
+                { dailyLogNo: searchRegex },
+                { notes: searchRegex },
+                // { kmRun: searchRegex },
+            ];
+        }
 
         const [logs, total] = await Promise.all([
             DailyTripLogModel.find(filter)
@@ -198,7 +257,7 @@ export const getAllDailyTripLogs = async (
                 .populate("enteredBy", "userName _id")
                 .sort({ date: -1, createdAt: -1 })
                 .skip(skip)
-                .limit(parseInt(limit))
+                .limit(limit)
                 .lean(),
             DailyTripLogModel.countDocuments(filter),
         ]);
@@ -212,9 +271,9 @@ export const getAllDailyTripLogs = async (
             pagination: {
                 page,
                 limit,
-                total, 
+                total,
                 hasMore,
-                totalPages: Math.ceil(total / parseInt(limit)),
+                totalPages: Math.ceil(total / limit),
             },
         });
     } catch (error: any) {

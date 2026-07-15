@@ -202,8 +202,18 @@ export const updateFuelLog = async (req: RoleBasedRequest, res: Response) => {
 // 3. GET ALL (paginated / infinite loading)
 export const getAllFuelLogs = async (req: RoleBasedRequest, res: Response) => {
   try {
-    const schoolId = req.query.schoolId || req.body.schoolId;
-    const { busId, academicYear } = req.query;
+    // const { busId, academicYear, schoolId } = req.query;
+    const { 
+        busId, 
+        academicYear, 
+        schoolId, 
+        search, 
+        fromDate, 
+        toDate, 
+        minAmount, 
+        maxAmount 
+    } = req.query;
+
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
@@ -219,9 +229,44 @@ export const getAllFuelLogs = async (req: RoleBasedRequest, res: Response) => {
     if (busId) filter.busId = busId;
     if (academicYear) filter.academicYear = academicYear;
 
+    // 3. Date Range Filter
+    if (fromDate || toDate) {
+        filter.date = {};
+        if (fromDate) filter.date.$gte = new Date(fromDate as string);
+        if (toDate) filter.date.$lte = new Date(toDate as string);
+    }
+
+    // 4. Amount Range Filter
+    if (minAmount || maxAmount) {
+        filter.totalAmount = {};
+        if (minAmount) filter.totalAmount.$gte = Number(minAmount);
+        if (maxAmount) filter.totalAmount.$lte = Number(maxAmount);
+    }
+
+    // 5. Global Search (Text + Odometer Number Match)
+    if (search) {
+        const searchString = String(search).trim();
+        const searchRegex = new RegExp(searchString, "i");
+        const searchNumber = Number(searchString); // Attempt to parse as number
+
+        const orConditions: any[] = [
+            { fuelStation: searchRegex },
+            { fuelBillNo: searchRegex },
+            { notes: searchRegex },
+            { fuelLogNo: searchRegex }
+        ];
+
+        // If the user typed a valid number (e.g. "12500"), include odometer in the search
+        if (!isNaN(searchNumber)) {
+            orConditions.push({ odometerReading: searchNumber });
+        }
+
+        filter.$or = orConditions;
+    }
+
     const [logs, total] = await Promise.all([
       FuelLogModel.find(filter)
-        .populate("busId", "busNumber registrationNo")
+        .populate("busId", "busNumber registrationNo _id")
         .populate("enteredBy", "name")
         .sort({ date: -1, createdAt: -1 })
         .skip(skip)
