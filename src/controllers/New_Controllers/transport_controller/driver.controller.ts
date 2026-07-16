@@ -92,6 +92,7 @@ export const createDriver = async (req: Request, res: Response) => {
             emergencyContact,
             address,
             documents,
+            status
         } = req.body;
 
         const files = (req.files as any[]) || [];
@@ -151,6 +152,7 @@ export const createDriver = async (req: Request, res: Response) => {
             emergencyContact: emergencyContact ?? null,
             address: address ?? null,
             photo,
+            status,
             documents: builtDocuments,
         });
 
@@ -165,22 +167,47 @@ export const createDriver = async (req: Request, res: Response) => {
 
 export const getAllDrivers = async (req: Request, res: Response) => {
     try {
-        const { schoolId, status, search } = req.query;
+        // const { schoolId, status, search } = req.query;
+
+        const { 
+            schoolId, 
+            status, 
+            search, 
+            joinedFrom, 
+            joinedTo, 
+            assignedBusId, 
+            unassigned 
+        } = req.query;
 
         const filter: any = {};
         if (schoolId) filter.schoolId = schoolId;
         if (status) filter.status = status;
         // if(search) filter.name = search 
+// --- NEW: Joined Date Range Filter ---
+        if (joinedFrom || joinedTo) {
+            filter.joinedDate = {};
+            if (joinedFrom) filter.joinedDate.$gte = new Date(joinedFrom as string);
+            if (joinedTo) filter.joinedDate.$lte = new Date(joinedTo as string);
+        }
 
+        // --- NEW: Bus Assignment Filters ---
+        if (assignedBusId) {
+            filter.assignedBusId = assignedBusId;
+        } else if (unassigned === 'true') {
+            filter.assignedBusId = null; // Find drivers with no assigned bus
+        }
+
+        // --- UPDATED: Expanded Search ---
         if (search) {
             const searchString = String(search).trim();
             const searchRegex = new RegExp(searchString, "i"); // "i" makes it case-insensitive
             filter.$or = [
                 { name: searchRegex },
-                { phone: searchRegex }
+                { phone: searchRegex },
+                { emergencyContact: searchRegex },
+                { address: searchRegex } // Added address search
             ];
         }
-
         const drivers = await DriverModel.find(filter)
             .populate("assignedBusId", "_id busNumber registrationNo")
             .sort({ createdAt: -1 });

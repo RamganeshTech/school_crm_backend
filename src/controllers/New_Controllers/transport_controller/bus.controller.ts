@@ -148,18 +148,31 @@ export const createBus = async (req: Request, res: Response) => {
 
 export const getAllBuses = async (req: Request, res: Response) => {
     try {
-        const { schoolId, operationalStatus, search } = req.query;
+        // const { schoolId, operationalStatus, search } = req.query;
+        const { schoolId, operationalStatus, search, nextServiceFrom, nextServiceTo } = req.query;
 
-        const filter: any = {};
+      const filter: any = {};
         if (schoolId) filter.schoolId = schoolId;
         if (operationalStatus) filter.operationalStatus = operationalStatus;
 
+        // --- NEW: Next Service Date Range Filter ---
+        if (nextServiceFrom || nextServiceTo) {
+            filter.nextServiceDate = {};
+            if (nextServiceFrom) filter.nextServiceDate.$gte = new Date(nextServiceFrom as string);
+            if (nextServiceTo) filter.nextServiceDate.$lte = new Date(nextServiceTo as string);
+        }
+
+        // --- UPDATED: Expanded Search ---
         if (search) {
             const searchString = String(search).trim();
-            const searchRegex = new RegExp(searchString, "i"); // "i" makes it case-insensitive
+            const searchRegex = new RegExp(searchString, "i"); // case-insensitive
             filter.$or = [
                 { busNumber: searchRegex },
-                { registrationNo: searchRegex }
+                { registrationNo: searchRegex },
+                { chassisNo: searchRegex },
+                { engineNo: searchRegex },
+                { rcOwner: searchRegex },
+                { makeModel: searchRegex }
             ];
         }
 

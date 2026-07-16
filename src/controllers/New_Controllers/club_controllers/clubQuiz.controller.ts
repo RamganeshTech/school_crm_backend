@@ -16,11 +16,11 @@ export const createClubQuiz = async (req: RoleBasedRequest, res: Response) => {
             title,
             description,
             questions,
-            academicYear
+            academicYear,
 
         } = req.body;
 
-        const schoolId = req.body.schoolId || req.user?.schoolId;
+        const schoolId = req.body.schoolId
 
         if (!schoolId) {
             return res.status(400).json({ ok: false, message: "SchoolId is required." });

@@ -4,6 +4,9 @@ import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model
 import { DailyTripLogModel } from "../../../models/New_Model/transport_model/dailyTrip.model.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import { resolveDateRange, type DateRangeType } from "./trasnportUtils.js";
+import { Types } from "mongoose"
+import { BusModel } from "../../../models/New_Model/transport_model/bus.model.js";
 // import { RoleBasedRequest } from "../types/request.types"; // adjust path as needed
 // import { DailyTripLogModel } from "../models/dailyTripLog.model";
 // import { SchoolModel } from "../models/school.model"; // adjust path as needed
@@ -363,5 +366,164 @@ export const deleteDailyTripLog = async (
             ok: false,
             message: error?.message || "Failed to delete daily trip log",
         });
+    }
+};
+
+
+
+
+
+
+
+export const getDailyTripAnalytics = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const schoolId = req.params.schoolId
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        const rangeType = (req.query.rangeType as DateRangeType) || "month";
+        const customStart = req.query.startDate as string | undefined;
+        const customEnd = req.query.endDate as string | undefined;
+
+        let startDate: Date, endDate: Date;
+        try {
+            ({ startDate, endDate } = resolveDateRange(rangeType, customStart, customEnd));
+        } catch (err: any) {
+            return res.status(400).json({ ok: false, message: err.message });
+        }
+
+        const matchStage = {
+            schoolId: new Types.ObjectId(schoolId),
+            date: { $gte: startDate, $lte: endDate },
+        };
+
+        // ---- 1. Overall summary ----
+        const [summary] = await DailyTripLogModel.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: null,
+                    totalKmRun: { $sum: "$kmRun" },
+                    totalTrips: { $sum: 1 },
+                    avgKmPerTrip: { $avg: "$kmRun" },
+                    maxKmInADay: { $max: "$kmRun" },
+                    minKmInADay: { $min: "$kmRun" },
+                },
+            },
+        ]);
+
+        // ---- 2. Bus-wise breakdown ----
+        const busWiseBreakdown = await DailyTripLogModel.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: "$busId",
+                    totalKmRun: { $sum: "$kmRun" },
+                    totalTrips: { $sum: 1 },
+                    avgKmPerTrip: { $avg: "$kmRun" },
+                },
+            },
+            {
+                $lookup: {
+                    from: BusModel.collection.name,
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "bus",
+                },
+            },
+            { $unwind: { path: "$bus", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 0,
+                    busId: "$_id",
+                    busNumber: "$bus.busNumber",
+                    registrationNo: "$bus.registrationNo",
+                    totalKmRun: 1,
+                    totalTrips: 1,
+                    avgKmPerTrip: { $round: ["$avgKmPerTrip", 2] },
+                },
+            },
+            { $sort: { totalKmRun: -1 } },
+        ]);
+
+        // ---- 3. Daily trend (for chart) ----
+        const dailyTrend = await DailyTripLogModel.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                    totalKmRun: { $sum: "$kmRun" },
+                    totalTrips: { $sum: 1 },
+                },
+            },
+            { $sort: { _id: 1 } },
+            { $project: { _id: 0, date: "$_id", totalKmRun: 1, totalTrips: 1 } },
+        ]);
+
+        // ---- 4. Data integrity: odometer mismatch (closing - opening != kmRun) ----
+       // ---- 4. Bus-wise Daily Trend (Multi-line chart) ----
+        const busDailyTrend = await DailyTripLogModel.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: {
+                        date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                        busId: "$busId"
+                    },
+                    dailyKmRun: { $sum: "$kmRun" }
+                }
+            },
+            {
+                $lookup: {
+                    from: BusModel.collection.name,
+                    localField: "_id.busId",
+                    foreignField: "_id",
+                    as: "bus"
+                }
+            },
+            { $unwind: { path: "$bus", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 0,
+                    date: "$_id.date",
+                    busId: "$_id.busId",
+                    busNumber: "$bus.busNumber",
+                    registrationNo: "$bus.registrationNo",
+                    dailyKmRun: 1
+                }
+            },
+            { $sort: { date: 1 } }
+        ]);
+
+
+        // ---- 5. Buses with zero logs in range (idle/unused) ----
+        const activeBusIds = await DailyTripLogModel.distinct("busId", matchStage);
+        const idleBuses = await BusModel.find({
+            schoolId: new Types.ObjectId(schoolId),
+            _id: { $nin: activeBusIds },
+        }).select("busNumber registrationNo");
+
+        return res.status(200).json({
+            ok: true,
+            data: {
+                range: { rangeType, startDate, endDate },
+                summary: summary || {
+                    totalKmRun: 0,
+                    totalTrips: 0,
+                    avgKmPerTrip: 0,
+                    maxKmInADay: 0,
+                    minKmInADay: 0,
+                },
+                busWiseBreakdown,
+                dailyTrend,
+                busDailyTrend, // <-- Added new data,
+                idleBuses,
+            },
+        });
+    } catch (error: any) {
+        console.error("getDailyTripAnalytics error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error" });
     }
 };
