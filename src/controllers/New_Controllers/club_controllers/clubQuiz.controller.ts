@@ -146,7 +146,7 @@ export const updateClubQuiz = async (req: RoleBasedRequest, res: Response) => {
 
 export const getAllClubQuizzes = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { clubId, clubVideoId, classId, sectionId, page = 1, limit = 10 } = req.query;
+        const { clubId, clubVideoId, classId, sectionId, page = 1, limit = 10, academicYear } = req.query;
         const schoolId = req.user?.schoolId;
 
         const filter: any = { schoolId, isActive: true };
@@ -154,6 +154,7 @@ export const getAllClubQuizzes = async (req: RoleBasedRequest, res: Response) =>
         if (clubVideoId) filter.clubVideoId = clubVideoId;
         if (classId) filter.classId = classId;
         if (sectionId) filter.sectionId = sectionId;
+        if (academicYear) filter.academicYear = academicYear;
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 

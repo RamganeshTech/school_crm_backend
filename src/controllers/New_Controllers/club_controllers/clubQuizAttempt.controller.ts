@@ -85,7 +85,7 @@ export const createQuizAttempt = async (req: RoleBasedRequest, res: Response) =>
 // GET ALL: For Leaderboards & Teacher Review
 export const getAllAttempts = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { quizId, classId, sectionId, studentId, page = 1, limit = 10 } = req.query;
+        const { quizId, classId, sectionId, studentId, page = 1, limit = 10, academicYear } = req.query;
         const schoolId = req?.query?.schoolId ||  req.user?.schoolId;
 
         const filter: any = { schoolId };
@@ -93,6 +93,7 @@ export const getAllAttempts = async (req: RoleBasedRequest, res: Response) => {
         if (classId) filter.classId = classId;
         if (sectionId) filter.sectionId = sectionId;
         if (studentId) filter.studentId = studentId;
+        if (academicYear) filter.academicYear = academicYear;
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
