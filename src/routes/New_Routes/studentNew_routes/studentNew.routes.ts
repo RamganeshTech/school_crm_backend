@@ -14,7 +14,7 @@ const studentRoutes = express.Router();
 // CREATE
 studentRoutes.post(
   "/create",
-  multiRoleAuth("correspondent", "administrator", "accountant", "teacher"),
+  multiRoleAuth("correspondent", "administrator", "accountant", "teacher", "principal"),
   featureGuard("studentRecord"),
 
   upload.single("file"), // Image
@@ -24,7 +24,7 @@ studentRoutes.post(
 // UPDATE
 studentRoutes.put(
   "/update/:id",
-  multiRoleAuth("correspondent", "administrator", "accountant", "parent", "teacher"),
+  multiRoleAuth("correspondent", "administrator", "accountant", "parent", "teacher", "principal"),
   featureGuard("studentRecord"),
 
   upload.single("file"), // Image
@@ -34,7 +34,7 @@ studentRoutes.put(
 
 studentRoutes.post(
   "/v1/upload-files/:studentId",
-  multiRoleAuth("correspondent", "administrator", "accountant", "teacher"),
+  multiRoleAuth("correspondent", "administrator", "accountant", "teacher", "principal"),
   featureGuard("studentRecord"),
 
   upload.array("files"), // Image
@@ -46,7 +46,7 @@ studentRoutes.post(
 // DELETE
 studentRoutes.delete(
   "/v1/delete-document/:studentId/:documentId",
-  multiRoleAuth("correspondent", "administrator", "accountant", "teacher"),
+  multiRoleAuth("correspondent", "administrator", "accountant", "teacher", "principal"),
   featureGuard("studentRecord"),
 
   deleteStudentDocument
@@ -58,7 +58,7 @@ studentRoutes.delete(
 // DELETE
 studentRoutes.delete(
   "/delete/:id",
-  multiRoleAuth("correspondent", "administrator", "teacher"),
+  multiRoleAuth("correspondent", "administrator", "teacher", "principal"),
   featureGuard("studentRecord"),
 
   deleteStudent

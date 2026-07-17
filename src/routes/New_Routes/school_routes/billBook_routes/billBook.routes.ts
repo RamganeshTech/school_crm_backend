@@ -26,34 +26,34 @@ const schoolBillBookRoutes = express.Router();
 // 1. Create a new Bill Book
 schoolBillBookRoutes.post(
     '/',
-    multiRoleAuth("correspondent", "administrator", "accountant"),
+    multiRoleAuth("correspondent", "administrator", "accountant", "principal"),
     createBillBook
 );
 
 // 2. Get all Bill Books for a specific school
 schoolBillBookRoutes.get(
     '/:schoolId',
-    multiRoleAuth("correspondent", "administrator", "accountant"),
+    multiRoleAuth("correspondent", "administrator", "accountant", "principal"),
     getAllBillBooks
 );
 
 // 3. Update Bill Book (Name & Active Status)
 schoolBillBookRoutes.patch(
     '/:id',
-    multiRoleAuth("correspondent", "administrator", "accountant"),
+    multiRoleAuth("correspondent", "administrator", "accountant", "principal"),
     updateBillBook
 );
 
 // 4. Manually Edit the starting Sequence Number
 schoolBillBookRoutes.patch(
     '/:id/sequence',
-    multiRoleAuth("correspondent", "administrator", "accountant"),
+    multiRoleAuth("correspondent", "administrator", "accountant", "principal"),
     editBillNumber
 );
 
 schoolBillBookRoutes.delete(
     '/:id', 
-    multiRoleAuth("correspondent", "administrator", "accountant"), 
+    multiRoleAuth("correspondent", "administrator", "accountant", "principal"), 
     deleteBillBook
 );
 

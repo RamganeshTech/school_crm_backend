@@ -14,20 +14,20 @@ sectionRoutes.get(
 
 sectionRoutes.post(
   "/create",
-  multiRoleAuth("correspondent", "administrator","teacher"),
+  multiRoleAuth("correspondent", "administrator","teacher", "principal"),
   createSection
 );
 
 
 sectionRoutes.put(
   "/update/:id",
-  multiRoleAuth("correspondent", "administrator","teacher"),
+  multiRoleAuth("correspondent", "administrator","teacher", "principal"),
   updateSection
 );
 
 sectionRoutes.delete(
   "/delete/:id",
-  multiRoleAuth("correspondent", "administrator","teacher"),
+  multiRoleAuth("correspondent", "administrator","teacher", "principal"),
   deleteSection
 );
 

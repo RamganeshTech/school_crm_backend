@@ -19,21 +19,21 @@ classRoutes.get(
 // CREATE: Only Admins/Principals
 classRoutes.post(
     "/create/:schoolId",
-    multiRoleAuth("correspondent", "administrator","teacher"),
+    multiRoleAuth("correspondent", "administrator","teacher", "principal"),
     createClass
 );
 
 // UPDATE
 classRoutes.put(
     "/update/:id",
-    multiRoleAuth("correspondent", "administrator","teacher"),
+    multiRoleAuth("correspondent", "administrator","teacher", "principal"),
     updateClass
 );
 
 // DELETE
 classRoutes.delete(
     "/delete/:id",
-    multiRoleAuth("correspondent", "administrator","teacher"),
+    multiRoleAuth("correspondent", "administrator","teacher", "principal"),
     deleteClass
 );
 

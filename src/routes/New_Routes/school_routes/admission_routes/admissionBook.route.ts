@@ -24,35 +24,35 @@ const schoolAdmissionBookRoutes = express.Router();
 // 1. Create a new Admission Book
 schoolAdmissionBookRoutes.post(
     '/', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     createAdmissionBook
 );
 
 // 2. Get all Admission Books for a specific school
 schoolAdmissionBookRoutes.get(
     '/:schoolId', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     getAllAdmissionBooks
 );
 
 // 3. Update Admission Book (Name & Active Status)
 schoolAdmissionBookRoutes.patch(
     '/:id', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     updateAdmissionBook
 );
 
 // 4. Manually Edit the starting Form Sequence Number
 schoolAdmissionBookRoutes.patch(
     '/:id/sequence', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     editFormNumber
 );
 
 // 5. Delete an inactive Admission Book
 schoolAdmissionBookRoutes.delete(
     '/:id', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     deleteAdmissionBook
 );
 

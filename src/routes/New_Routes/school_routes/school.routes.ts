@@ -53,13 +53,13 @@ schoolRoutes.get('/getschool/socialplatform/:id',
 
 
 schoolRoutes.put('/update/academic-termdate/:id',
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "accountant", "principal"),
     upsertAcademicTermDates);
 
 
 
 schoolRoutes.delete('/delete/academic-termdate/:schoolId/:academicTermDateId',
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator","accountant", "principal"),
     deleteAcademicTermDates);
 
 

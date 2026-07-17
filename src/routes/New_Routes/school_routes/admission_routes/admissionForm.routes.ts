@@ -24,7 +24,7 @@ const schoolAdmissionFormRoutes = express.Router();
 // ==========================================
 schoolAdmissionFormRoutes.post(
     '/generate-link', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     generateAdmissionLink
 );
 
@@ -35,47 +35,47 @@ schoolAdmissionFormRoutes.put('/admissions/submit/:id', submitPublicAdmissionFor
 
 schoolAdmissionFormRoutes.get(
     '/dropdown', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     getAdmissionFormsForDropdown
 );
 
 // 2. Get a SINGLE admission form by its ID
 schoolAdmissionFormRoutes.get(
     '/form', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     getSingleAdmissionForm
 );
 
 // 1. Get ALL admission forms for a school (Supports optional ?status= query)
 schoolAdmissionFormRoutes.get(
     '/:schoolId', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     getAllAdmissionForms
 );
 
 // 3. Delete an admission form
 schoolAdmissionFormRoutes.delete(
     '/:id', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     deleteAdmissionForm
 );
 
 schoolAdmissionFormRoutes.patch(
     '/status', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     updateAdmissionFormStatus
 );
 
 // Admin Update Form Details (via Query Params)
 schoolAdmissionFormRoutes.put(
     '/details', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     updateAdmissionFormDetails
 );
 
 schoolAdmissionFormRoutes.patch(
     '/:id/link-student', 
-    multiRoleAuth("correspondent", "administrator"), 
+    multiRoleAuth("correspondent", "administrator", "principal"), 
     linkStudentToAdmissionForm
 );
 

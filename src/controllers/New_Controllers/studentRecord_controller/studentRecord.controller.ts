@@ -19,6 +19,7 @@ import { archiveData } from "../deleteArchieve_controller/deleteArchieve.control
 import FeeStructureConfigModel from "../../../models/New_Model/FeeStructureModel/feeStructureConfig.model.js";
 import BillBookModel from "../../../models/New_Model/SchoolModel/billBook_model/BillBook.model.js";
 import BillBookRecordModel from "../../../models/New_Model/SchoolModel/billBook_model/BillRecord.model.js";
+import BusRouteModel from "../../../models/New_Model/transport_model/busRoute.model.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 
 
@@ -621,6 +622,64 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
 
 // NEW VERSION 
 
+const BUS_FEE_HEADS = ["bus first term", "bus second term", "bus third term"] as const;
+
+
+type BusHead = typeof BUS_FEE_HEADS[number];
+
+const BUS_TERM_MAP: Record<BusHead, TermKey> = {
+    "bus first term": "firstTerm",
+    "bus second term": "secondTerm",
+    "bus third term": "thirdTerm",
+};
+
+// ── helper: sync bus fee heads onto a studentRecord, non-destructively ──
+async function applyBusFeeAllocation(
+    studentRecord: any,
+    isBusApplicable: boolean,
+    busPoint: any,
+    session: mongoose.ClientSession
+) {
+    if (!isBusApplicable) {
+        // NOTE: we don't strip existing bus heads if bus is turned off later —
+        // that'd nuke dues/paid history. isBusApplicable flag on record just
+        // stops NEW bus heads from being (re)synced. If you want removal
+        // behaviour on toggle-off, tell me and I'll add it explicitly.
+        studentRecord.isBusApplicable = false;
+        return;
+    }
+
+    // busPoint = new Types.ObjectId(busPoint);
+
+    if (!busPoint) {
+        throw new Error("busPoint is required when isBusApplicable is true");
+    }
+
+    const route = await BusRouteModel.findById(busPoint).session(session);
+    if (!route) throw new Error("Bus route not found for given busPoint");
+    if (!route.feeAmount || route.feeAmount <= 0) {
+        throw new Error("Bus route has no valid feeAmount configured");
+    }
+
+    const termAmount = Number(route.feeAmount);
+
+    for (const head of BUS_FEE_HEADS) {
+        const alreadyExists =
+            studentRecord.feeStructurev1.has?.(head) ?? (head in studentRecord.feeStructurev1);
+
+        // structure always synced to current route amount (safe — dues recomputed later)
+        setDynamicField(studentRecord.feeStructurev1, head, termAmount);
+
+        // paid only initialized once, never reset on re-sync
+        if (!alreadyExists) {
+            setDynamicField(studentRecord.feePaidv1, head, 0);
+        }
+    }
+
+    studentRecord.isBusApplicable = true;
+    studentRecord.busPoint = busPoint;
+}
+
 const TERM_KEYS = ["firstTerm", "secondTerm", "thirdTerm"] as const;
 type TermKey = typeof TERM_KEYS[number];
 
@@ -684,7 +743,7 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             bankName, chequeDate, remarks,
             manualDueAllocation, paidHeads, newOld,
             academicYear,
-            // isBusApplicable,
+            isBusApplicable,
             busPoint,
         } = req.body;
 
@@ -693,7 +752,7 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         // ── Type coercions ──
         amount = Number(amount || 0);
         manualDueAllocation = manualDueAllocation === true || manualDueAllocation === "true";
-        // isBusApplicable = isBusApplicable === true || isBusApplicable === "true";
+        isBusApplicable = isBusApplicable === true || isBusApplicable === "true";
 
         if (cashDenominations && typeof cashDenominations === "string") {
             cashDenominations = JSON.parse(cashDenominations);
@@ -808,12 +867,20 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
 
                 // concession: { isApplied: false },
                 // isBusApplicable,
-                busPoint,
+                // busPoint,
             });
         }
 
+        await applyBusFeeAllocation(studentRecord, isBusApplicable, busPoint, session);
+
+        // ── build effective heads list used for ALL downstream calc ──
+        const effectiveHeads: string[] = studentRecord.isBusApplicable
+            ? [...orderedHeads, ...BUS_FEE_HEADS]
+            : orderedHeads;
+
         // ── 6. APPLY CONCESSION (Waterfall) ──────────────────────────────
-        const currentPaidTotal: number = orderedHeads.reduce(
+        // const currentPaidTotal: number = orderedHeads.reduce(
+        const currentPaidTotal: number = effectiveHeads.reduce(
             // 🌟 Targeting feePaidv1
             (sum, head) => sum + Number(studentRecord.feePaidv1.get?.(head) ?? studentRecord.feePaidv1[head] ?? 0),
             0
@@ -822,11 +889,15 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         if (currentPaidTotal === 0 && studentRecord.concession && studentRecord.concession.isApplied) {
             let discount = Number(studentRecord.concession.inAmount || 0);
 
+            // here swaping every subsequent orderedHeads reference (concession waterfall, 
+            // overpayment guard, FIFO/manual allocation, dues recalc) to effectiveHeads
+
             if (discount > 0) {
                 // const reversedHeads = [...orderedHeads].reverse(); // Target later terms first
                 //  changed to deduct the money from the frist term itselfs
-                
-                for (const head of orderedHeads) {
+
+                // for (const head of orderedHeads) {
+                for (const head of effectiveHeads) {
                     if (discount <= 0) break;
 
                     // 🌟 Targeting feeStructurev1
@@ -851,7 +922,8 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         let totalStructure = 0;
         let totalPaid = 0;
 
-        for (const head of orderedHeads) {
+        // for (const head of orderedHeads) {
+        for (const head of effectiveHeads) {
             // 🌟 Targeting v1 properties
             totalStructure += Number(studentRecord.feeStructurev1.get?.(head) ?? studentRecord.feeStructurev1[head] ?? 0);
             totalPaid += Number(studentRecord.feePaidv1.get?.(head) ?? studentRecord.feePaidv1[head] ?? 0);
@@ -876,9 +948,10 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
 
                 // Validate all submitted heads exist in config
                 for (const head of Object.keys(parsedHeads)) {
-                    if (!orderedHeads.includes(head)) {
+                    // if (!orderedHeads.includes(head)) {
+                    if (!effectiveHeads.includes(head)) {
                         throw new Error(
-                            `Invalid fee head in paidHeads: '${head}'. Allowed heads: [${orderedHeads.join(", ")}]`
+                            `Invalid fee head in paidHeads: '${head}'. Allowed heads: [${effectiveHeads.join(", ")}]`
                         );
                     }
                 }
@@ -904,7 +977,8 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
                 }
             } else {
                 // ── FIFO MODE
-                for (const head of orderedHeads) {
+                // for (const head of orderedHeads) {
+                for (const head of effectiveHeads) {
                     if (remainingToPay <= 0) break;
 
                     // 🌟 Targeting v1 properties
@@ -929,7 +1003,8 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         // ── 9. RECALCULATE DUES & STATUS ─────────────────────────────────
         let totalDuesRemaining = 0;
 
-        for (const head of orderedHeads) {
+        // for (const head of orderedHeads) {
+        for (const head of effectiveHeads) {
             // 🌟 Targeting v1 properties
             const structure = Number(studentRecord.feeStructurev1.get?.(head) ?? studentRecord.feeStructurev1[head] ?? 0);
             const paid = Number(studentRecord.feePaidv1.get?.(head) ?? studentRecord.feePaidv1[head] ?? 0);
@@ -942,9 +1017,23 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
         studentRecord.isFullyPaid = totalDuesRemaining <= 0;
 
 
+
+
+        const busHeadsConfig = studentRecord.isBusApplicable
+            ? BUS_FEE_HEADS.map((head) => ({
+                feeHead: head,
+                associatedTerm: BUS_TERM_MAP[head],
+                isTerm: true,
+            }))
+            : [];
+
+        const effectiveFeeHeadsConfig = [...feeHeadsConfigRaw, ...busHeadsConfig];
+
+
         // 🌟 NEW — term-aware fee status
         studentRecord.feeStatus = computeFeeStatus(
-            feeHeadsConfigRaw,
+            // feeHeadsConfigRaw,
+            effectiveFeeHeadsConfig,
             studentRecord.duesv1,
             schoolDoc.academicTermDates,
             currentYear!
@@ -1352,6 +1441,22 @@ export const revertFeeTransactionV1 = async (req: RoleBasedRequest, res: Respons
         if (!schoolDoc) throw new Error("School not found");
 
 
+        // 🌟 NEW — bring in bus heads if this student has bus applicable
+        const effectiveHeads: string[] = studentRecord.isBusApplicable
+            ? [...orderedHeads, ...BUS_FEE_HEADS]
+            : orderedHeads;
+
+        const busHeadsConfig = studentRecord.isBusApplicable
+            ? BUS_FEE_HEADS.map((head) => ({
+                feeHead: head,
+                associatedTerm: BUS_TERM_MAP[head],
+                isTerm: true,
+            }))
+            : [];
+
+        const effectiveFeeHeadsConfig = [...feeHeadsConfigRaw, ...busHeadsConfig];
+
+
         // ── 7. REVERT ALLOCATION — SUBTRACT FROM feePaidv1 ──────────────
         // allocation shape unchanged: [{ feeHead: string, amount: number }]
         for (const item of transaction.allocation) {
@@ -1379,7 +1484,8 @@ export const revertFeeTransactionV1 = async (req: RoleBasedRequest, res: Respons
         // ── 8. RECALCULATE DUES DYNAMICALLY ─────────────────────────────
         let totalDuesRemaining = 0;
 
-        for (const head of orderedHeads) {
+        // for (const head of orderedHeads) {
+        for (const head of effectiveHeads) {
             const structure = Number(
                 studentRecord.feeStructurev1.get?.(head) ?? studentRecord.feeStructurev1[head] ?? 0
             );
@@ -1401,7 +1507,8 @@ export const revertFeeTransactionV1 = async (req: RoleBasedRequest, res: Respons
 
         // 🌟 NEW — recompute term-aware fee status after revert
         studentRecord.feeStatus = computeFeeStatus(
-            feeHeadsConfigRaw,
+            // feeHeadsConfigRaw,
+            effectiveFeeHeadsConfig,
             studentRecord.duesv1,
             schoolDoc.academicTermDates,
             studentRecord.academicYear
@@ -1854,7 +1961,7 @@ export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) =>
             academicYear: currentYear,
         }).session(session);
 
-        if(!studentRecord){
+        if (!studentRecord) {
             throw new Error("Student record not found, apply concession once after assigning the student to a class")
         }
 
@@ -2951,7 +3058,8 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
             .populate("studentId", "studentName srId _id studentImage newOld currentClassId currentSectionId") // Profile Info
             .populate("classId", "name")   // Class Name
             .populate("sectionId", "name") // Section Name
-            .populate("concession.approvedBy", "userName role");
+            .populate("concession.approvedBy", "userName role")
+            .populate("busPoint", "_id routeName feeAmount");
 
         let responseData;
 
@@ -3284,121 +3392,6 @@ export const toggleStudentRecordStatusV1 = async (req: RoleBasedRequest, res: Re
 
 
 
-// export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: Response) => {
-//     try {
-//         const { studentId, schoolId } = req.params;
-//         const { newOld, academicYear } = req.body;
-
-//         // const schoolId = req.user?.schoolId
-
-//         // 1. Validate parameters
-//         if (!studentId || studentId === "null") {
-//             return res.status(400).json({
-//                 ok: false,
-//                 message: "studentId is required to update or initialize a student record."
-//             });
-//         }
-
-//         // if (newOld !== "new" && newOld !== "old") {
-//         //     return res.status(400).json({ ok: false, message: "newOld property only allows either new or old value only" });
-//         // }
-
-
-//         if (!['new', 'old'].includes(newOld)) {
-//             return res.status(400).json({ ok: false, message: "newOld must be 'new' or 'old'" });
-//         }
-
-//         if (!academicYear) {
-//             return res.status(400).json({ ok: false, message: "academicYear is required to target or upsert the correct row" });
-//         }
-
-//         // 2. FINANCIAL SAFETY LOCK (Prevent switching type if fees are paid)
-//         const filter = { schoolId, studentId, academicYear };
-//         const existingRecord = await StudentRecordModel.findOne(filter);
-
-//         if (existingRecord) {
-//             const paidObj: Map<string, number> =
-//                 existingRecord?.feePaidv1 || new Map<string, number>();
-
-//             const totalPaid = [...(paidObj instanceof Map ? paidObj?.values() : Object.values(paidObj))]
-//                 .reduce<number>((sum, v) => sum + Number(v || 0), 0);
-
-//             const isTypeChanging = existingRecord.newOld && existingRecord.newOld !== newOld;
-
-//             if (totalPaid > 0 && isTypeChanging) {
-//                 return res.status(400).json({
-//                     ok: false,
-//                     message: `Action Blocked: Student has already paid ₹${totalPaid}. You cannot change New/Old type without reverting payments first.`
-//                 });
-//             }
-//         }
-
-//         // 2. Query, Update, and Upsert if not found
-//         const updatedRecord = await StudentRecordModel.findOneAndUpdate(
-//             filter,
-//             {
-//                 // Fields to update regardless of whether it's a new or existing document
-//                 $set: { newOld: newOld },
-//             },
-//             {
-//                 upsert: true,             // 🌟 CRITICAL: Creates the document if it doesn't exist
-//                 new: true,                // Returns the newly updated/inserted doc
-//                 setDefaultsOnInsert: true // Applies any default values specified in your Mongoose Schema
-//             }
-//         );
-
-
-
-
-//         if (!updatedRecord) {
-//             return res.status(404).json({
-//                 ok: false,
-//                 message: `student not found`,
-//             });
-//         }
-
-
-//         await StudentNewModel.findByIdAndUpdate(
-//             studentId,
-//             {
-//                 // Fields to update regardless of whether it's a new or existing document
-//                 $set: { newOld: newOld },
-//             },
-//             {
-//                 new: true,                // Returns the newly updated/inserted doc
-//             }
-//         );
-
-
-//         // 3. Create security audit log tracking
-//         await createAuditLog(req, {
-//             // action: updatedRecord.createdAt === updatedRecord.updatedAt ? "create" : "edit",
-//             action: "edit",
-//             module: "student_record",
-//             targetId: updatedRecord._id,
-//             description: `Student record updated to ${newOld} value for academic year ${academicYear} (${studentId})`,
-//             status: "success"
-//         });
-
-//         return res.status(200).json({
-//             ok: true,
-//             message: `Student Record successfully updated ${newOld} processed for year ${academicYear}`,
-//             data: {
-//                 _id: updatedRecord._id,
-//                 studentId: updatedRecord.studentId,
-//                 academicYear: updatedRecord.academicYear,
-//                 isActive: updatedRecord.isActive,
-//                 updatedRecord: updatedRecord
-//             }
-//         });
-
-//     } catch (error: any) {
-//         console.error("student record new old type update V1 Error:", error);
-//         return res.status(500).json({ ok: false, message: "Internal server error" });
-//     }
-// };
-
-
 
 export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -3423,7 +3416,7 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
 
         const filter = { schoolId, studentId, academicYear };
         const existingRecord = await StudentRecordModel.findOne(filter);
-        
+
         // Prepare the payload dynamically with the base update
         let updatePayload: any = { newOld: newOld };
 
@@ -3462,9 +3455,9 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
                 const classId = existingRecord.classId;
 
                 if (!classId) {
-                    return res.status(400).json({ 
-                        ok: false, 
-                        message: "Student record is missing classId. Cannot fetch fee structure." 
+                    return res.status(400).json({
+                        ok: false,
+                        message: "Student record is missing classId. Cannot fetch fee structure."
                     });
                 }
 
@@ -3472,7 +3465,7 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
                 const feeStructure = await FeeStructureModel.findOne({
                     schoolId,
                     classId,
-                    type: newOld 
+                    type: newOld
                 });
 
                 if (!feeStructure) {
@@ -3518,7 +3511,7 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
                 $set: { newOld: newOld },
             },
             {
-                new: true, 
+                new: true,
             }
         );
 

@@ -391,7 +391,7 @@ export const getAllBusRoutesDropDown = async (req: RoleBasedRequest, res: Respon
 
         const burRoutes = await BusRouteModel.find(filter)
                 .sort({ createdAt: -1 })
-                .select("_id routeName routeNo schoolId")
+                .select("_id routeName routeNo schoolId feeAmount")
      
         return res.status(200).json({
             ok: true,

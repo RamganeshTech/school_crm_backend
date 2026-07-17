@@ -23,7 +23,7 @@ busStoprouter.put("/:routeId/assignments", multiRoleAuth("correspondent", "admin
 
 // Get all - search (routeNo/routeName) + minFee/maxFee + cursor pagination
 busStoprouter.get("/", multiRoleAuth("correspondent", "administrator"), getAllBusRoutes);
-busStoprouter.get("/drop-down",multiRoleAuth("correspondent", "administrator"), getAllBusRoutesDropDown);
+busStoprouter.get("/drop-down/:schoolId",multiRoleAuth("correspondent", "administrator"), getAllBusRoutesDropDown);
 
 
 // Get single route

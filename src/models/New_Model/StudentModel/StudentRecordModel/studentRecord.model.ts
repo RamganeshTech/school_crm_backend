@@ -60,7 +60,7 @@ export interface IStudentRecord extends Document {
     isActive: boolean;
     isBusApplicable: boolean;
     isFullyPaid: boolean;
-    busPoint?: string | null;
+    busPoint?: Types.ObjectId | null;
 
     feeStatus: "paid" | "unpaid"
     createdAt: Date;
@@ -167,7 +167,7 @@ const StudentRecordSchema = new mongoose.Schema<IStudentRecord>({
 
     // === OPTIONAL: BUS DETAILS FOR THIS YEAR ===
     busPoint: {
-        type: String, default: null
+        type: Schema.Types.ObjectId, ref: "BusRouteModel", default: null
     },
 
     feeStatus: { type: String, default: "unpaid" },
