@@ -65,6 +65,9 @@ import busRoutes from './routes/New_Routes/transport_routes/bus.routes.js';
 import dailyTripLogRoutes from './routes/New_Routes/transport_routes/dailyTripLog.routes.js';
 import fuelLogRoutes from './routes/New_Routes/transport_routes/fuelLog.routes.js';
 import busStoprouter from './routes/New_Routes/transport_routes/busRoute.routes.js';
+import premisesRoutes from './routes/New_Routes/eb_routes/premises.routes.js';
+import ebLogsRoutes from './routes/New_Routes/eb_routes/ebLog.routes.js';
+import tariffRoutes from './routes/New_Routes/eb_routes/tariff.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
@@ -135,6 +138,11 @@ app.use('/api/transport/bus', busRoutes)
 app.use('/api/transport/dailytriplog', dailyTripLogRoutes)
 app.use('/api/transport/fuellog', fuelLogRoutes)
 app.use('/api/transport/bus-route', busStoprouter)
+
+
+app.use('/api/premises', premisesRoutes)
+app.use('/api/eb/logs', ebLogsRoutes)
+app.use('/api/eb/tariff', tariffRoutes)
 
 
 app.use('/api/download', downloadRoutes)

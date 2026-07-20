@@ -44,12 +44,41 @@ export default studentFeeColumns;
 
 
 export const REDIS_KEYS = {
-    // Other keys...
-    
-    // Group class caches strictly by schoolId
-    schoolClasses: (schoolId: string) => `school:${schoolId}:classes`,
+  // Other keys...
 
-    // NEW: Handle both "all" and specific "classId" section queries
-    schoolSections: (schoolId: string, classId?: string) => 
-        `school:${schoolId}:sections:class:${classId || 'all'}`,
+  // Group class caches strictly by schoolId
+  schoolClasses: (schoolId: string) => `school:${schoolId}:classes`,
+
+  // NEW: Handle both "all" and specific "classId" section queries
+  schoolSections: (schoolId: string, classId?: string) =>
+    `school:${schoolId}:sections:class:${classId || 'all'}`,
+
+  schoolPremises: (schoolId: string) => `school:${schoolId}:premises`,
+  schoolPremisesById: (schoolId: string, premisesId: string) =>
+    `school:${schoolId}:premises:${premisesId}`,
+
+  // NEW: EB Logs
+  // only the unfiltered base list is cached; filtered/search queries bypass cache
+  schoolEBLogs: (schoolId: string) => `school:${schoolId}:eblogs`,
+
+  schoolEBLogById: (schoolId: string, logId: string) =>
+    `school:${schoolId}:eblogs:log:${logId}`,
+
+
+
+  // NEW: EB Dashboard / Analytics
+  // date-stamped so cache naturally goes stale across days without manual invalidation
+  schoolEBDashboard: (schoolId: string, dateStamp: string) =>
+    `school:${schoolId}:eb:dashboard:${dateStamp}`,
+  schoolEBPremisesAnalytics: (schoolId: string, dateStamp: string) =>
+    `school:${schoolId}:eb:premisesAnalytics:${dateStamp}`,
+
+  // period + premises + dateStamp -> naturally goes stale day to day
+  schoolEBChart: (schoolId: string, period: string, premisesId: string, dateStamp: string) =>
+    `school:${schoolId}:eb:chart:${period}:${premisesId}:${dateStamp}`,
+
+  schoolTariffs: (schoolId: string) => `school:${schoolId}:tariffs`,
+  schoolTariffById: (schoolId: string, tariffId: string) =>
+    `school:${schoolId}:tariffs:${tariffId}`,
+
 };
