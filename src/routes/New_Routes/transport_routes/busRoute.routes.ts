@@ -8,7 +8,8 @@ import {  createBusRoute,
  deleteBusRoute,
  getAllBusRoutesDropDown,
  removeBusRouteAssignment,
- updateBusRouteAssignment, } from "../../../controllers/New_Controllers/transport_controller/busRoute.controller.js";
+ updateBusRouteAssignment,
+ getAssignedRoutesForDriver, } from "../../../controllers/New_Controllers/transport_controller/busRoute.controller.js";
 
 const busStoprouter = Router();
 
@@ -22,12 +23,13 @@ busStoprouter.put("/:routeId/assignments", multiRoleAuth("correspondent", "admin
 
 
 // Get all - search (routeNo/routeName) + minFee/maxFee + cursor pagination
-busStoprouter.get("/", multiRoleAuth("correspondent", "administrator"), getAllBusRoutes);
-busStoprouter.get("/drop-down/:schoolId",multiRoleAuth("correspondent", "administrator"), getAllBusRoutesDropDown);
+busStoprouter.get("/", multiRoleAuth("correspondent", "administrator", "principal"), getAllBusRoutes);
+busStoprouter.get("/drop-down/:schoolId",multiRoleAuth("correspondent", "administrator", "principal"), getAllBusRoutesDropDown);
+busStoprouter.get("/assigned-routes/:driverId",multiRoleAuth("correspondent", "administrator", "principal"), getAssignedRoutesForDriver);
 
 
 // Get single route
-busStoprouter.get("/:routeId",multiRoleAuth("correspondent", "administrator"), getSingleBusRoute);
+busStoprouter.get("/:routeId",multiRoleAuth("correspondent", "administrator", "principal"), getSingleBusRoute);
 
 // Update route details (routeName, stops, feeAmount, feeFrequency)
 busStoprouter.put("/:routeId", multiRoleAuth("correspondent", "administrator"),updateBusRoute);

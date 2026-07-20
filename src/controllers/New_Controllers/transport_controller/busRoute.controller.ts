@@ -3,6 +3,7 @@ import type { RoleBasedRequest } from "../../../utils/types.js";
 import BusRouteModel from "../../../models/New_Model/transport_model/busRoute.model.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import mongoose from "mongoose";
 
 export const createBusRoute = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -425,6 +426,62 @@ export const getSingleBusRoute = async (req: RoleBasedRequest, res: Response) =>
   } catch (error: any) {
     return res.status(500).json({ ok: false, message: error.message });
   }
+};
+
+
+export const getAssignedRoutesForDriver = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { driverId } = req.params;
+
+        // 1. Validate the provided driverId
+        if (!driverId || !mongoose.Types.ObjectId.isValid(driverId)) {
+            return res.status(400).json({ 
+                ok: false, 
+                message: "A valid Driver ID is required." 
+            });
+        }
+
+        // 2. Query routes where this driver is found in the assignments array
+        const routes = await BusRouteModel.find({
+            "assignments.driverId": driverId,
+            isActive: true 
+        })
+        .populate("assignments.busId", "_id busNumber registrationNo capacity assignedDriverId") // Optional: populate bus details if you want to show which bus they are driving
+        .lean(); // Use lean() for faster read-only execution
+
+        if (!routes || routes.length === 0) {
+            return res.status(200).json({ 
+                ok: true, 
+                message: "No active routes assigned to this driver.", 
+                data: [] 
+            });
+        }
+
+        // 3. Filter the assignments array to ONLY include the assignments for this specific driver
+        const formattedRoutes = routes.map((route: any) => {
+            return {
+                ...route,
+                // Keep only the assignments that match the requested driver
+                assignments: route.assignments.filter(
+                    (assignment: any) => String(assignment.driverId) === String(driverId)
+                )
+            };
+        });
+
+        // 4. Return the successfully formatted data
+        return res.status(200).json({
+            ok: true,
+            message: "Assigned routes fetched successfully.",
+            data: formattedRoutes
+        });
+
+    } catch (error: any) {
+        console.error("Error fetching assigned routes for driver:", error);
+        return res.status(500).json({ 
+            ok: false, 
+            message: error.message || "Failed to fetch assigned routes." 
+        });
+    }
 };
 
 export const deleteBusRoute = async (req: RoleBasedRequest, res: Response) => {
