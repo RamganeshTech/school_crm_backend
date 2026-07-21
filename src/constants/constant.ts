@@ -81,4 +81,6 @@ export const REDIS_KEYS = {
   schoolTariffById: (schoolId: string, tariffId: string) =>
     `school:${schoolId}:tariffs:${tariffId}`,
 
+  schoolEBKpis: (schoolId: string, dateStamp: string) => `school:${schoolId}:eb:kpis:${dateStamp}`,
+
 };

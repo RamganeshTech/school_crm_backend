@@ -7,7 +7,8 @@ updateEBLog,
 deleteEBLog, 
 getEBPremisesAnalytics,
 getEBDashboardOverview,
-getEBConsumptionChart} from "../../../controllers/New_Controllers/eb_controllers/ebLog.controller.js";
+getEBConsumptionChart,
+getEBDashboardBillKpis} from "../../../controllers/New_Controllers/eb_controllers/ebLog.controller.js";
 
 
 const ebLogsRoutes = Router();
@@ -60,7 +61,7 @@ ebLogsRoutes.delete(
 
 
 ebLogsRoutes.get(
-    "/analytics/premises/:schoolId",
+    "/analytics/:schoolId/premises",
     multiRoleAuth("correspondent", "administrator", "principal", "accountant"),
     getEBPremisesAnalytics
 );
@@ -69,7 +70,7 @@ ebLogsRoutes.get(
 
 
 ebLogsRoutes.get(
-    "/analytics/dashboard/:schoolId",
+    "/analytics/:schoolId/dashboard",
     multiRoleAuth("correspondent", "administrator", "principal", "accountant"),
     getEBDashboardOverview
 );
@@ -77,11 +78,16 @@ ebLogsRoutes.get(
 
 
 ebLogsRoutes.get(
-    "/analytics/line-chart/consumption/:schoolId",
+    "/analytics/:schoolId/line-chart/consumption",
     multiRoleAuth("correspondent", "administrator", "principal", "accountant"),
     getEBConsumptionChart
 );
 
+ebLogsRoutes.get(
+    "/analytics/:schoolId/bill/kpi",
+    multiRoleAuth("correspondent", "administrator", "principal", "accountant"),
+    getEBDashboardBillKpis
+);
 
 
 

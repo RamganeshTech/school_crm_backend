@@ -10,27 +10,29 @@ import type { RoleBasedRequest } from "../../../utils/types.js";
 import { PremisesModel } from "../../../models/New_Model/eb_models/premises.model.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import { TariffModel, type ITariff } from "../../../models/New_Model/eb_models/tariff.model.js";
+import { invalidateAllEBDerivedCache } from "./tariff.controller.js";
 
 
 
 
-export const invalidateEBCache = async (schoolId: string): Promise<void> => {
-    try {
-        const pattern = `school:${schoolId}:eb*`;
-        const stream = redisClient.scanStream({ match: pattern, count: 100 });
+// export const invalidateEBCache = async (schoolId: string): Promise<void> => {
+//     try {
+//         const pattern = `school:${schoolId}:eb*`;
+//         const stream = redisClient.scanStream({ match: pattern, count: 100 });
 
-        const keysToDelete: string[] = [];
-        for await (const keys of stream) {
-            keysToDelete.push(...keys);
-        }
+//         const keysToDelete: string[] = [];
+//         for await (const keys of stream) {
+//             keysToDelete.push(...keys);
+//         }
 
-        if (keysToDelete.length > 0) {
-            await redisClient.del(...keysToDelete);
-        }
-    } catch (redisError) {
-        console.error("Redis Invalidate Error (EB):", redisError);
-    }
-};
+//         if (keysToDelete.length > 0) {
+//             await redisClient.del(...keysToDelete);
+//         }
+//     } catch (redisError) {
+//         console.error("Redis Invalidate Error (EB):", redisError);
+//     }
+// };
 
 
 // ============================
@@ -203,7 +205,8 @@ export const createEBLog = async (req: RoleBasedRequest, res: Response) => {
         // INVALIDATE CACHE
         try {
             // await redisClient.del(REDIS_KEYS.schoolEBLogs(schoolId));
-            await invalidateEBCache(schoolId);
+            // await invalidateEBCache(schoolId);
+            await invalidateAllEBDerivedCache(schoolId);
         } catch (redisError) {
             console.error("Redis Del Error (Create EBLog):", redisError);
         }
@@ -277,7 +280,9 @@ export const updateEBLog = async (req: RoleBasedRequest, res: Response) => {
             // await redisClient.del(REDIS_KEYS.schoolEBLogs(schoolId));
 
             // await redisClient.del(REDIS_KEYS.schoolEBLogById(schoolId, logId));
-            await invalidateEBCache(schoolId);
+            // await invalidateEBCache(schoolId);
+            await invalidateAllEBDerivedCache(schoolId);
+
         } catch (redisError) {
             console.error("Redis Del Error (Update EBLog):", redisError);
         }
@@ -320,7 +325,9 @@ export const deleteEBLog = async (req: RoleBasedRequest, res: Response) => {
             // await redisClient.del(REDIS_KEYS.schoolEBLogById(schoolId, logId));
 
 
-            await invalidateEBCache(schoolId);
+            // await invalidateEBCache(schoolId);
+            await invalidateAllEBDerivedCache(schoolId);
+
         } catch (redisError) {
             console.error("Redis Del Error (Delete EBLog):", redisError);
         }
@@ -563,6 +570,22 @@ export const getEBPremisesAnalytics = async (req: RoleBasedRequest, res: Respons
                 projectedThisMonth = avgDailyThisMonth * daysInThisMonth;
             }
 
+            // NEW: lifetime total consumption for this premises
+            // = latest meterReading - the very first ever meterReading logged
+            const firstLog = await EBLogModel.findOne({ schoolId, premisesId: premisesIdStr })
+                .sort({ date: 1, time: 1 })
+                .lean();
+
+            const latestLog = await EBLogModel.findOne({ schoolId, premisesId: premisesIdStr })
+                .sort({ date: -1, time: -1 })
+                .lean();
+
+            let totalConsumption: number | null = null;
+            if (firstLog && latestLog) {
+                const diff = latestLog.meterReading - firstLog.meterReading;
+                totalConsumption = diff >= 0 ? diff : null;
+            }
+
             analytics.push({
                 premisesId: premises._id,
                 premisesName: premises.premisesName,
@@ -572,6 +595,8 @@ export const getEBPremisesAnalytics = async (req: RoleBasedRequest, res: Respons
                     avg30DayConsumption !== null ? Math.round(avg30DayConsumption * 100) / 100 : null,
                 projectedThisMonthConsumption:
                     projectedThisMonth !== null ? Math.round(projectedThisMonth * 100) / 100 : null,
+                totalConsumption:
+                    totalConsumption !== null ? Math.round(totalConsumption * 100) / 100 : null,
             });
         }
 
@@ -591,9 +616,29 @@ export const getEBPremisesAnalytics = async (req: RoleBasedRequest, res: Respons
 
 
 
+// Fetches a premises' tariff + sanctionedLoad in one call.
+// Returns tariff: null if no tariff configured (caller should skip cost calc, not error).
+export const getPremisesTariffContext = async (
+    schoolId: string,
+    premisesId: string
+): Promise<{ tariff: Pick<ITariff, "slabs" | "fixedChargePerKw"> | null; sanctionedLoad: number }> => {
+    const premises = await PremisesModel.findOne({ _id: premisesId, schoolId }).lean();
+    if (!premises) return { tariff: null, sanctionedLoad: 0 };
+
+    const tariff = premises.tariffId
+        ? await TariffModel.findById(premises.tariffId).lean()
+        : null;
+
+    return {
+        tariff: tariff ? { slabs: tariff.slabs, fixedChargePerKw: tariff.fixedChargePerKw } : null,
+        sanctionedLoad: premises.sanctionedLoad || 0,
+    };
+};
+
 interface SeriesPoint {
     label: string;
     kwUsed: number | null;
+    cost: number | null
 }
 
 // Computes bucketed consumption for ONE premises across the given buckets.
@@ -601,9 +646,15 @@ interface SeriesPoint {
 export const computeSeriesForPremises = async (
     schoolId: string,
     premisesId: string,
-    buckets: { bucketStart: Date; bucketEnd: Date; label: string }[]
+    buckets: { bucketStart: Date; bucketEnd: Date; label: string }[],
+    // tariff: Pick<ITariff, "slabs" | "fixedChargePerKw"> | null,
+    // sanctionedLoad: number
+
 ): Promise<SeriesPoint[]> => {
     if (buckets.length === 0) return [];
+
+    const { tariff, sanctionedLoad } = await getPremisesTariffContext(schoolId, premisesId);
+
 
     const firstBucket = buckets[0];
     const lastBucket = buckets[buckets.length - 1];
@@ -656,7 +707,7 @@ export const computeSeriesForPremises = async (
 
         if (bucketEndReading === null) {
             // no new reading this bucket — no consumption data for this slice
-            points.push({ label: bucket.label, kwUsed: null });
+            points.push({ label: bucket.label, kwUsed: null, cost: null });
             continue;
         }
 
@@ -665,7 +716,11 @@ export const computeSeriesForPremises = async (
                 ? Math.round((bucketEndReading - carryReading) * 100) / 100
                 : null;
 
-        points.push({ label: bucket.label, kwUsed });
+
+        const cost = kwUsed !== null && tariff ? calculateBillAmount(kwUsed, tariff, sanctionedLoad) : null;
+        points.push({ label: bucket.label, kwUsed, cost });
+
+        // points.push({ label: bucket.label, kwUsed });
         carryReading = bucketEndReading;
     }
 
@@ -865,6 +920,75 @@ export const getEBConsumptionChart = async (req: RoleBasedRequest, res: Response
         }
 
         return res.status(200).json({ ok: true, data: responseData });
+    } catch (error: any) {
+        console.error(error);
+        return res.status(500).json({ ok: false, message: "Internal server error" });
+    }
+};
+
+
+
+export const calculateBillAmount = (
+    totalUnits: number,
+    tariff: Pick<ITariff, "slabs" | "fixedChargePerKw">,
+    sanctionedLoad: number
+): number => {
+    let remaining = totalUnits;
+    let previousUpto = 0;
+    let unitsCost = 0;
+
+    for (const slab of tariff.slabs) {
+        if (remaining <= 0) break;
+        const slabCapacity = slab.upto === null ? remaining : slab.upto - previousUpto;
+        const unitsInThisSlab = Math.min(remaining, slabCapacity);
+        unitsCost += unitsInThisSlab * slab.ratePerUnit;
+        remaining -= unitsInThisSlab;
+        if (slab.upto !== null) previousUpto = slab.upto;
+    }
+
+    const fixedCost = (sanctionedLoad || 0) * (tariff.fixedChargePerKw || 0);
+    return Math.round((unitsCost + fixedCost) * 100) / 100;
+};
+
+
+export const getEBDashboardBillKpis = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { schoolId } = req.params;
+        if (!schoolId) return res.status(400).json({ ok: false, message: "schoolId is required" });
+
+        const premisesList = await PremisesModel.find({ schoolId, isActive: true }).lean();
+
+        const today = new Date();
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const monthEnd = getEndOfDay(today);
+        const daysElapsed = today.getDate();
+        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+
+        let monthlyProjectedBill = 0;
+        let projectedUnitsThisMonth = 0;
+        let monthToDateBill = 0;
+
+        for (const premises of premisesList) {
+            const { tariff, sanctionedLoad } = await getPremisesTariffContext(schoolId, premises._id.toString());
+            if (!tariff) continue;
+
+            const mtdUnits = await computeConsumption(schoolId, premises._id.toString(), monthStart, monthEnd);
+            if (mtdUnits === null) continue;
+
+            const projectedUnits = (mtdUnits / daysElapsed) * daysInMonth;
+            monthlyProjectedBill += calculateBillAmount(projectedUnits, tariff, sanctionedLoad);
+            monthToDateBill += calculateBillAmount(mtdUnits, tariff, sanctionedLoad);
+            projectedUnitsThisMonth += projectedUnits;
+        }
+
+        return res.status(200).json({
+            ok: true,
+            data: {
+                monthlyProjectedBill: Math.round(monthlyProjectedBill * 100) / 100,
+                projectedUnitsThisMonth: Math.round(projectedUnitsThisMonth * 100) / 100,
+                estimatedDailyEBCost: Math.round((monthToDateBill / daysElapsed) * 100) / 100,
+            },
+        });
     } catch (error: any) {
         console.error(error);
         return res.status(500).json({ ok: false, message: "Internal server error" });

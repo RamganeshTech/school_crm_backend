@@ -5,6 +5,7 @@ import redisClient from "../../../config/redisConfig.js";
 import { PremisesModel } from "../../../models/New_Model/eb_models/premises.model.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import { invalidateAllEBDerivedCache, invalidatePremisesCache } from "./tariff.controller.js";
 // ============================
 // GET ALL PREMISES
 // ============================
@@ -144,7 +145,8 @@ export const createPremises = async (req: RoleBasedRequest, res: Response) => {
 
         // INVALIDATE CACHE
         try {
-            await redisClient.del(REDIS_KEYS.schoolPremises(schoolId));
+            // await redisClient.del(REDIS_KEYS.schoolPremises(schoolId));
+            await invalidatePremisesCache(schoolId)
         } catch (redisError) {
             console.error("Redis Del Error (Create Premises):", redisError);
         }
@@ -230,9 +232,12 @@ export const updatePremises = async (req: RoleBasedRequest, res: Response) => {
 
         // INVALIDATE CACHE
         try {
-            await redisClient.del(REDIS_KEYS.schoolPremises(schoolId));
-            await redisClient.del(REDIS_KEYS.schoolPremisesById(schoolId, premisesId));
+            // await redisClient.del(REDIS_KEYS.schoolPremises(schoolId));
+            // await redisClient.del(REDIS_KEYS.schoolPremisesById(schoolId, premisesId));
 
+
+            	await invalidatePremisesCache(schoolId) 
+                await invalidateAllEBDerivedCache(schoolId)
         } catch (redisError) {
             console.error("Redis Del Error (Update Premises):", redisError);
         }
@@ -271,8 +276,11 @@ export const deletePremises = async (req: RoleBasedRequest, res: Response) => {
 
         // INVALIDATE CACHE
         try {
-            await redisClient.del(REDIS_KEYS.schoolPremises(schoolId));
-            await redisClient.del(REDIS_KEYS.schoolPremisesById(schoolId, premisesId));
+            // await redisClient.del(REDIS_KEYS.schoolPremises(schoolId));
+            // await redisClient.del(REDIS_KEYS.schoolPremisesById(schoolId, premisesId));
+
+            await invalidatePremisesCache(schoolId)
+
 
         } catch (redisError) {
             console.error("Redis Del Error (Delete Premises):", redisError);

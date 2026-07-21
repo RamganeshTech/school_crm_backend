@@ -5,9 +5,56 @@ import redisClient from "../../../config/redisConfig.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import { TariffModel } from "../../../models/New_Model/eb_models/tariff.model.js";
+import { deleteByPattern } from "../../../utils/redisUtils.js";
 // ============================
 // GET ALL TARIFFS
 // ============================
+
+
+
+// Wipes ONLY eb-logs related cache (logs list/by-id) — use when just an EB log changes
+// and nothing about premises/tariff changed.
+export const invalidateEBLogsCache = async (schoolId: string): Promise<void> => {
+    try {
+        await deleteByPattern(`school:${schoolId}:eblogs*`);
+    } catch (e) {
+        console.error("Redis Invalidate Error (EB Logs):", e);
+    }
+};
+
+// Wipes ALL derived EB data: logs, dashboard, analytics, chart, kpis.
+// This is the one to call whenever ANYTHING that feeds cost/consumption changes —
+// a log entry, a tariff's rates, or a premises' tariffId/sanctionedLoad.
+export const invalidateAllEBDerivedCache = async (schoolId: string): Promise<void> => {
+    try {
+        await Promise.all([
+            deleteByPattern(`school:${schoolId}:eblogs*`),
+            deleteByPattern(`school:${schoolId}:eb:*`), // dashboard, premisesAnalytics, chart, kpis
+        ]);
+    } catch (e) {
+        console.error("Redis Invalidate Error (EB Derived):", e);
+    }
+};
+
+// Wipes premises cache specifically (list + by-id)
+export const invalidatePremisesCache = async (schoolId: string, premisesId?: string): Promise<void> => {
+    try {
+        await deleteByPattern(`school:${schoolId}:premises*`);
+    } catch (e) {
+        console.error("Redis Invalidate Error (Premises):", e);
+    }
+};
+
+// Wipes tariff cache specifically (list + by-id)
+export const invalidateTariffCache = async (schoolId: string): Promise<void> => {
+    try {
+        await deleteByPattern(`school:${schoolId}:tariffs*`);
+    } catch (e) {
+        console.error("Redis Invalidate Error (Tariff):", e);
+    }
+};
+
+
 export const getTariffs = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { schoolId } = req.params;
@@ -124,7 +171,8 @@ export const createTariff = async (req: RoleBasedRequest, res: Response) => {
 
         // INVALIDATE CACHE
         try {
-            await redisClient.del(REDIS_KEYS.schoolTariffs(schoolId));
+            // await redisClient.del(REDIS_KEYS.schoolTariffs(schoolId));
+            await invalidateTariffCache(schoolId) 
         } catch (redisError) {
             console.error("Redis Del Error (Create Tariff):", redisError);
         }
@@ -198,8 +246,11 @@ export const updateTariff = async (req: RoleBasedRequest, res: Response) => {
 
         // INVALIDATE CACHE
         try {
-            await redisClient.del(REDIS_KEYS.schoolTariffs(schoolId));
-            await redisClient.del(REDIS_KEYS.schoolTariffById(schoolId, tariffId));
+            // await redisClient.del(REDIS_KEYS.schoolTariffs(schoolId));
+            // await redisClient.del(REDIS_KEYS.schoolTariffById(schoolId, tariffId));
+
+              await invalidateTariffCache(schoolId) 
+            await invalidateAllEBDerivedCache(schoolId);
         } catch (redisError) {
             console.error("Redis Del Error (Update Tariff):", redisError);
         }
@@ -238,8 +289,11 @@ export const deleteTariff = async (req: RoleBasedRequest, res: Response) => {
 
         // INVALIDATE CACHE
         try {
-            await redisClient.del(REDIS_KEYS.schoolTariffs(schoolId));
-            await redisClient.del(REDIS_KEYS.schoolTariffById(schoolId, tariffId));
+            // await redisClient.del(REDIS_KEYS.schoolTariffs(schoolId));
+            // await redisClient.del(REDIS_KEYS.schoolTariffById(schoolId, tariffId));
+
+             await invalidateTariffCache(schoolId) 
+            await invalidateAllEBDerivedCache(schoolId);
         } catch (redisError) {
             console.error("Redis Del Error (Delete Tariff):", redisError);
         }
