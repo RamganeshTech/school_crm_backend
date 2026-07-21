@@ -7,7 +7,6 @@ import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 const premisesRoutes = Router();
 
 // Reusable roles array excluding "teacher"
-const allowedRoles = ["correspondent", "administrator", "principal"];
 
 // ============================
 // GET ALL PREMISES

@@ -20,11 +20,29 @@ busRoutes.post(
   createBus
 );
 
-busRoutes.get("/", multiRoleAuth("administrator", "correspondent"), getAllBuses);
-busRoutes.get("/dropdown/:schoolId", multiRoleAuth("administrator", "correspondent"), getAllBusesDropDown);
+busRoutes.get("/", 
+  
+  // multiRoleAuth("administrator", "correspondent"),
+      multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+  
+  
+  getAllBuses);
+busRoutes.get("/dropdown/:schoolId",
+  
+  // multiRoleAuth("administrator", "correspondent"),
+      multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+  
+  getAllBusesDropDown);
 
 
-busRoutes.get("/:id", multiRoleAuth("administrator", "correspondent"), getBusById);
+busRoutes.get("/:id",
+  
+  // multiRoleAuth("administrator", "correspondent"),
+      multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+  
+  getBusById);
 
 busRoutes.put(
   "/:id",

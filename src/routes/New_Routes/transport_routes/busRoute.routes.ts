@@ -23,13 +23,33 @@ busStoprouter.put("/:routeId/assignments", multiRoleAuth("correspondent", "admin
 
 
 // Get all - search (routeNo/routeName) + minFee/maxFee + cursor pagination
-busStoprouter.get("/", multiRoleAuth("correspondent", "administrator", "principal"), getAllBusRoutes);
-busStoprouter.get("/drop-down/:schoolId",multiRoleAuth("correspondent", "administrator", "principal"), getAllBusRoutesDropDown);
-busStoprouter.get("/assigned-routes/:driverId",multiRoleAuth("correspondent", "administrator", "principal"), getAssignedRoutesForDriver);
+busStoprouter.get("/", 
+    // multiRoleAuth("correspondent", "administrator", "principal"),
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+    
+    getAllBusRoutes);
+busStoprouter.get("/drop-down/:schoolId",
+    // multiRoleAuth("correspondent", "administrator", "principal"),
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+    
+    getAllBusRoutesDropDown);
+busStoprouter.get("/assigned-routes/:driverId",
+    // multiRoleAuth("correspondent", "administrator", "principal"),
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+    
+    getAssignedRoutesForDriver);
 
 
 // Get single route
-busStoprouter.get("/:routeId",multiRoleAuth("correspondent", "administrator", "principal"), getSingleBusRoute);
+busStoprouter.get("/:routeId",
+    // multiRoleAuth("correspondent", "administrator", "principal"),
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+    
+    getSingleBusRoute);
 
 // Update route details (routeName, stops, feeAmount, feeFrequency)
 busStoprouter.put("/:routeId", multiRoleAuth("correspondent", "administrator"),updateBusRoute);

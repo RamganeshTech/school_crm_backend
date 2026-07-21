@@ -14,10 +14,20 @@ fuelLogRoutes.post(
     createFuelLog
 );
 
-fuelLogRoutes.get("/", multiRoleAuth("administrator", "correspondent"), getAllFuelLogs);
+fuelLogRoutes.get("/",
+    //  multiRoleAuth("administrator", "correspondent"),
+        multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+    
+     
+     getAllFuelLogs);
 
 
-fuelLogRoutes.get("/:id", multiRoleAuth("administrator", "correspondent"), getFuelLogById);
+fuelLogRoutes.get("/:id", 
+    // multiRoleAuth("administrator", "correspondent"),
+        multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+    
+    getFuelLogById);
 
 fuelLogRoutes.put(
     "/:id",
@@ -26,7 +36,12 @@ fuelLogRoutes.put(
 );
 
 fuelLogRoutes.delete("/:id", multiRoleAuth("administrator", "correspondent"), deleteFuelLog);
-fuelLogRoutes.get("/analytics/:schoolId", multiRoleAuth("administrator", "correspondent"), getFuelLogAnalytics);
+fuelLogRoutes.get("/analytics/:schoolId", 
+    // multiRoleAuth("administrator", "correspondent"),
+        multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+    
+    
+    getFuelLogAnalytics);
 
 
 export default fuelLogRoutes;

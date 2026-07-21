@@ -495,7 +495,7 @@ export const getEBDashboardOverview = async (req: RoleBasedRequest, res: Respons
 
 // ============================
 // PREMISES ANALYTICS
-// - per premises: yesterday consumption, 30-day avg, projected this month
+// - per premises: yesterday consumption, 30-day avg, projected this month, total kw used 
 // ============================
 export const getEBPremisesAnalytics = async (req: RoleBasedRequest, res: Response) => {
     try {

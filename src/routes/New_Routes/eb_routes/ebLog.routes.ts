@@ -58,7 +58,7 @@ ebLogsRoutes.delete(
     deleteEBLog
 );
 
-
+// anlaytics routes starts from here 
 
 ebLogsRoutes.get(
     "/analytics/:schoolId/premises",

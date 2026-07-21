@@ -13,15 +13,29 @@ const driverRoutes = express.Router();
  
 driverRoutes.post(
   "/create",
-  multiRoleAuth("administrator", "correspondent"),
+  multiRoleAuth("administrator", "correspondent", ),
   upload.any(),
   createDriver
 );
  
-driverRoutes.get("/", multiRoleAuth("administrator", "correspondent"), getAllDrivers);
-driverRoutes.get("/dropdown/:schoolId", multiRoleAuth("administrator", "correspondent"), getAllDriverDropDown);
+driverRoutes.get("/", 
+  // multiRoleAuth("administrator", "correspondent"), 
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+  getAllDrivers);
+driverRoutes.get("/dropdown/:schoolId", 
+  // multiRoleAuth("administrator", "correspondent"),
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+   getAllDriverDropDown);
  
-driverRoutes.get("/:id", multiRoleAuth("administrator", "correspondent"), getDriverById);
+driverRoutes.get("/:id",
+  
+  // multiRoleAuth("administrator", "correspondent"), 
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+  
+  getDriverById);
  
 driverRoutes.put(
   "/:id",

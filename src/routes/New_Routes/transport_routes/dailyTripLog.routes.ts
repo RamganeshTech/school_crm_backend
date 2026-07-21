@@ -12,10 +12,20 @@ dailyTripLogRoutes.post(
     createDailyTripLog
 );
 
-dailyTripLogRoutes.get("/", multiRoleAuth("administrator", "correspondent"), getAllDailyTripLogs);
+dailyTripLogRoutes.get("/",
+    //  multiRoleAuth("administrator", "correspondent"),
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+     
+     getAllDailyTripLogs);
 
 
-dailyTripLogRoutes.get("/:id", multiRoleAuth("administrator", "correspondent"), getDailyTripLogById);
+dailyTripLogRoutes.get("/:id",
+    //  multiRoleAuth("administrator", "correspondent"),
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+     
+     getDailyTripLogById);
 
 dailyTripLogRoutes.put(
     "/:id",
@@ -24,7 +34,11 @@ dailyTripLogRoutes.put(
 );
 
 dailyTripLogRoutes.delete("/:id", multiRoleAuth("administrator", "correspondent"), deleteDailyTripLog);
-dailyTripLogRoutes.get("/analytics/:schoolId", multiRoleAuth("administrator", "correspondent"), getDailyTripAnalytics);
+dailyTripLogRoutes.get("/analytics/:schoolId",
+    //  multiRoleAuth("administrator", "correspondent"), 
+    multiRoleAuth("correspondent", "administrator", "principal", "viceprincipal", "accountant"),
+
+     getDailyTripAnalytics);
 
 
 export default dailyTripLogRoutes;
