@@ -47,7 +47,7 @@ userRoutes.get(
 
 userRoutes.put(
     "/assignrole/:userId",
-    multiRoleAuth("correspondent", "administrator"),
+    multiRoleAuth("correspondent", "administrator", "principal"),
     assignRolesToUser
 );
 
