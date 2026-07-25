@@ -559,6 +559,7 @@ export const loginUser = async (req: RoleBasedRequest, res: Response) => {
         phoneNo: user.phoneNo,
         role: user.role,
         isPlatformAdmin: user.isPlatformAdmin || false,
+        profileImage: user.profileImage,
         studentId: user?.studentId || [],
         assignments: user?.assignments || [],
         schoolId: user?.schoolId,
@@ -624,6 +625,7 @@ export const isAuthenticated = async (req: RoleBasedRequest, res: Response) => {
       phoneNo: isExist.phoneNo,
       userName: isExist.userName,
       isAuthenticated: true,
+      profileImage: isExist.profileImage,
       isPlatformAdmin: isExist?.isPlatformAdmin || false,
       studentId: isExist?.studentId || [],
       assignments: isExist?.assignments || [],
@@ -846,7 +848,7 @@ export const updateProfileImg = async (req: RoleBasedRequest, res: Response) => 
     });
 
 
-     return res.status(201).json({
+    return res.status(201).json({
       message: "User profile updated successfully",
       data: user,
       ok: true
