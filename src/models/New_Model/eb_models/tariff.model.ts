@@ -11,6 +11,7 @@ export interface ITariff extends Document {
     fixedChargePerKw: number; // ₹ per kW per billing cycle
     slabs: ITariffSlab[];
     isActive: boolean;
+    isTelescopic: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -30,6 +31,7 @@ const TariffSchema = new Schema<ITariff>(
         fixedChargePerKw: { type: Number, required: true },
         slabs: { type: [TariffSlabSchema], default: [] },
         isActive: { type: Boolean, default: true },
+        isTelescopic: {type:Boolean , default:false}
     },
     { timestamps: true }
 );

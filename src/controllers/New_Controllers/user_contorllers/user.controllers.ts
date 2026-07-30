@@ -876,6 +876,7 @@ export const requestPasswordReset = async (req: RoleBasedRequest, res: Response)
     // to prevent malicious actors from guessing valid emails in your system.
     if (!user) {
       return res.status(200).json({
+        prevent:true,
         ok: true,
         message: "If an account with that email exists, a password reset link has been sent."
       });
@@ -893,7 +894,7 @@ export const requestPasswordReset = async (req: RoleBasedRequest, res: Response)
 
     // Professional Email Template
     const mailOptions = {
-      from: `"buildmyschool" <${process.env.EMAIL_USER}>`,
+      from: `"dailygrades" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: "Password Reset Request",
       html: `
@@ -929,6 +930,7 @@ export const requestPasswordReset = async (req: RoleBasedRequest, res: Response)
     await transporter.sendMail(mailOptions);
 
     return res.status(200).json({
+      ok:true,
       message: "If an account with that email exists, a password reset link has been sent."
     });
 

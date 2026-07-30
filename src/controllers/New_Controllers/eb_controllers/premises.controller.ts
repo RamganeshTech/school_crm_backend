@@ -32,7 +32,7 @@ export const getPremises = async (req: RoleBasedRequest, res: Response) => {
 
         // const premises = await PremisesModel.find({ schoolId }).sort({ createdAt: -1 }).lean();
         const premises = await PremisesModel.find({ schoolId })
-            .populate("tariffId", "tariffName")
+            .populate("tariffId", "tariffName _id fixedChargePerKw")
             .sort({ createdAt: -1 })
             .lean();
 
@@ -73,7 +73,7 @@ export const getPremisesById = async (req: RoleBasedRequest, res: Response) => {
         }
 
         const premises = await PremisesModel.findOne({ _id: premisesId, schoolId })
-            .populate("tariffId", "tariffName")
+            .populate("tariffId", "tariffName _id fixedChargePerKw")
             .lean();
 
         if (!premises) {

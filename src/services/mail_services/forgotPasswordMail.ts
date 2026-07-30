@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+// import dotenv  from 'dotenv';
+// dotenv.config()
 
 // --- NODEMAILER CONFIGURATION ---
 // Ideally, move this to a separate config/email.ts file

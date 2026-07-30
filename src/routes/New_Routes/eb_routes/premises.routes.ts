@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createPremises, deletePremises, getPremises, updatePremises } from "../../../controllers/New_Controllers/eb_controllers/premises.controller.js";
+import { createPremises, deletePremises, getPremises, getPremisesById, updatePremises } from "../../../controllers/New_Controllers/eb_controllers/premises.controller.js";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 // Adjust the import paths according to your actual folder structure
 
@@ -13,8 +13,16 @@ const premisesRoutes = Router();
 // ============================
 premisesRoutes.get(
     "/get/:schoolId",
-    multiRoleAuth("accountant", "correspondent", "administrator", "principal", "viceprincipal", "teacher", ),
+    multiRoleAuth("accountant", "correspondent", "administrator", "principal", "viceprincipal", "teacher" ),
     getPremises
+);
+
+
+
+premisesRoutes.get(
+    "/get-single/:schoolId/:premisesId",
+    multiRoleAuth("accountant", "correspondent", "administrator", "principal", "viceprincipal", "teacher"),
+    getPremisesById
 );
 
 // ============================

@@ -8,7 +8,8 @@ deleteEBLog,
 getEBPremisesAnalytics,
 getEBDashboardOverview,
 getEBConsumptionChart,
-getEBDashboardBillKpis} from "../../../controllers/New_Controllers/eb_controllers/ebLog.controller.js";
+getEBDashboardBillKpis,
+getPremisesCostSummary} from "../../../controllers/New_Controllers/eb_controllers/ebLog.controller.js";
 
 
 const ebLogsRoutes = Router();
@@ -88,6 +89,17 @@ ebLogsRoutes.get(
     multiRoleAuth("correspondent", "administrator", "principal", "accountant"),
     getEBDashboardBillKpis
 );
+
+
+
+ebLogsRoutes.get(
+    "/analytics/:schoolId/:premisesId/charge",
+    // multiRoleAuthMiddleware("owner", "staff", "CTO",),
+    multiRoleAuth("correspondent", "administrator", "principal", "accountant"),
+    getPremisesCostSummary
+);
+
+
 
 
 

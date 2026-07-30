@@ -138,7 +138,7 @@ export const getTariffById = async (req: RoleBasedRequest, res: Response) => {
 export const createTariff = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { schoolId } = req.params;
-        const { tariffName, fixedChargePerKw, slabs } = req.body;
+        const { tariffName, fixedChargePerKw, slabs, isTelescopic } = req.body;
 
         if (!schoolId || !tariffName || fixedChargePerKw === undefined) {
             return res.status(400).json({ ok: false, message: "schoolId, tariffName and fixedChargePerKw are required" });
@@ -146,6 +146,10 @@ export const createTariff = async (req: RoleBasedRequest, res: Response) => {
 
         if (typeof fixedChargePerKw !== "number") {
             return res.status(400).json({ ok: false, message: "fixedChargePerKw must be a number" });
+        }
+
+         if(isTelescopic && typeof isTelescopic !=="boolean"){
+            return res.status(400).json({ ok: false, message: "isTelescopic must be a boolean value" });
         }
 
         if (slabs !== undefined && !Array.isArray(slabs)) {
@@ -167,6 +171,7 @@ export const createTariff = async (req: RoleBasedRequest, res: Response) => {
             tariffName,
             fixedChargePerKw,
             slabs: slabs || [],
+            isTelescopic,
         });
 
         // INVALIDATE CACHE
@@ -198,7 +203,7 @@ export const createTariff = async (req: RoleBasedRequest, res: Response) => {
 export const updateTariff = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { schoolId, tariffId } = req.params;
-        const { tariffName, fixedChargePerKw, slabs, isActive } = req.body;
+        const { tariffName, fixedChargePerKw, slabs, isActive, isTelescopic } = req.body;
 
         if (!schoolId || !tariffId) {
             return res.status(400).json({ ok: false, message: "schoolId and tariffId are required" });
@@ -240,6 +245,11 @@ export const updateTariff = async (req: RoleBasedRequest, res: Response) => {
 
         if (typeof isActive === "boolean") {
             tariff.isActive = isActive;
+        }
+
+
+        if (typeof isTelescopic === "boolean") {
+            tariff.isTelescopic = isTelescopic;
         }
 
         await tariff.save();
