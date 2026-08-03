@@ -146,8 +146,8 @@ export const updateClubQuiz = async (req: RoleBasedRequest, res: Response) => {
 
 export const getAllClubQuizzes = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { clubId, clubVideoId, classId, sectionId, page = 1, limit = 10, academicYear } = req.query;
-        const schoolId = req.user?.schoolId;
+        const { clubId, clubVideoId, classId, sectionId, page = 1, limit = 10, academicYear, schoolId } = req.query;
+        // const schoolId = req.user?.schoolId;
 
         const filter: any = { schoolId, isActive: true };
         if (clubId) filter.clubId = clubId;
