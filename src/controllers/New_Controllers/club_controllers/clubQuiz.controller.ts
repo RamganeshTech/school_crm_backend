@@ -87,7 +87,7 @@ export const createClubQuiz = async (req: RoleBasedRequest, res: Response) => {
 export const updateClubQuiz = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const schoolId = req.user?.schoolId;
+        const schoolId = req.body.schoolId;
 
         if (!id) {
             return res.status(400).json({ ok: false, message: "id is required." });
