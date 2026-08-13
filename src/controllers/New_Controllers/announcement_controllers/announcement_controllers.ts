@@ -11,6 +11,7 @@ import type { Response } from "express";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import { getIO } from "../../../config/socket.js";
+import { createNotification } from "../notification_controller/notfication.controller.js";
 
 export const createAnnouncement = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -169,6 +170,34 @@ export const createAnnouncement = async (req: RoleBasedRequest, res: Response) =
         } catch (socketError) {
             console.error("Socket emission failed, but announcement was created:", socketError);
         }
+
+        // --- NOTIFY: new announcement ---
+        try {
+            // parsedAudience can contain multiple values (e.g. ['parent','teacher']) —
+            // Notification.targetAudience is a single value, so fan out one Notification doc per audience
+            for (const audience of parsedAudience) {
+                if (audience === 'student') continue; // Notification model doesn't have a 'student' audience yet — flag if needed
+                
+                // 1. SET THE DYNAMIC PATH BASED ON THE AUDIENCE ITERATION
+                const dynamicPath = audience === 'parent' 
+                    ? '/dashboard/student/announcement' 
+                    : '/dashboard/announcement';
+                await createNotification(req, {
+                    type: 'announcement',
+                    title,
+                    message: description || title,
+                    referenceId: newAnnouncement._id.toString(),
+                    referenceModel: 'AnnouncementModel',
+                    path: dynamicPath, // bell component already resolves the parent-specific path
+                    targetAudience: audience,
+                    targetClasses: finalClassIds,
+                    academicYear,
+                });
+            }
+        } catch (notifyError) {
+            console.error('Announcement notification failed, but announcement was saved:', notifyError);
+        }
+
 
         await createAuditLog(req, {
             action: "create",

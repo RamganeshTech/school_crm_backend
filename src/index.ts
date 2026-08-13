@@ -68,11 +68,14 @@ import busStoprouter from './routes/New_Routes/transport_routes/busRoute.routes.
 import premisesRoutes from './routes/New_Routes/eb_routes/premises.routes.js';
 import ebLogsRoutes from './routes/New_Routes/eb_routes/ebLog.routes.js';
 import tariffRoutes from './routes/New_Routes/eb_routes/tariff.routes.js';
+import notficationRoutes from './routes/New_Routes/notfication_routes/notfication.routes.js';
 
 
 dotenv.config({ path: '.env.production' });
 const app = express()
 const server = http.createServer(app);
+
+app.set('trust proxy', 1);
 
 app.use(cors({
     origin: process.env.FRONTEND_URL,
@@ -143,6 +146,8 @@ app.use('/api/transport/bus-route', busStoprouter)
 app.use('/api/premises', premisesRoutes)
 app.use('/api/eb/logs', ebLogsRoutes)
 app.use('/api/eb/tariff', tariffRoutes)
+
+app.use('/api/notifications', notficationRoutes)
 
 
 app.use('/api/download', downloadRoutes)

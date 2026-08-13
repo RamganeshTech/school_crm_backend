@@ -5,15 +5,15 @@ import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 
 const HomeWorkRoutes = express.Router();
 
-HomeWorkRoutes.post("/create", multiRoleAuth("correspondent", "teacher"), upload.array("files"), createHomework);
+HomeWorkRoutes.post("/create", multiRoleAuth("correspondent", "teacher", "administrator"), upload.array("files"), createHomework);
 
 // Update Routes
-HomeWorkRoutes.put("/updatetext", multiRoleAuth("correspondent", "teacher"), updateHomeworkText);
-HomeWorkRoutes.put("/addattachments", multiRoleAuth("correspondent", "teacher"), upload.array("files"), addHomeworkAttachments);
+HomeWorkRoutes.put("/updatetext", multiRoleAuth("correspondent", "teacher", "administrator"), updateHomeworkText);
+HomeWorkRoutes.put("/addattachments", multiRoleAuth("correspondent", "teacher", "administrator"), upload.array("files"), addHomeworkAttachments);
 
 // Delete Routes
-HomeWorkRoutes.delete("/deletesubject", multiRoleAuth("correspondent", "teacher"), deleteSubjectFromHomework); // Deletes whole subject
-HomeWorkRoutes.delete("/deleteattachment", multiRoleAuth("correspondent", "teacher"), deleteHomeworkAttachment); // Deletes one file
+HomeWorkRoutes.delete("/deletesubject", multiRoleAuth("correspondent", "teacher", "administrator"), deleteSubjectFromHomework); // Deletes whole subject
+HomeWorkRoutes.delete("/deleteattachment", multiRoleAuth("correspondent", "teacher", "administrator"), deleteHomeworkAttachment); // Deletes one file
 
 // Fetch Routes
 HomeWorkRoutes.get("/getall", multiRoleAuth("correspondent", "administrator", "principal", "parent", "accountant", "viceprincipal", "teacher"), getAllHomework);
@@ -21,7 +21,7 @@ HomeWorkRoutes.get("/getall", multiRoleAuth("correspondent", "administrator", "p
 HomeWorkRoutes.get("/getsingle/:homeworkId", multiRoleAuth("correspondent", "administrator", "principal", "parent", "accountant", "viceprincipal", "teacher"), getSingleHomework);
 
 // DELETE entire day's record
-HomeWorkRoutes.delete("/deleteentireday", multiRoleAuth("correspondent", "teacher"), deleteDailyHomework);
+HomeWorkRoutes.delete("/deleteentireday", multiRoleAuth("correspondent", "teacher", "administrator"), deleteDailyHomework);
 
 
 export default HomeWorkRoutes;

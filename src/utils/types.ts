@@ -1,11 +1,12 @@
 import { type Request } from 'express';
 import { type JwtPayload } from 'jsonwebtoken';
+import type { IUserRole } from '../models/New_Model/UserModel/userModel.model.js';
 
 // 1. The specific data inside your JWT
 export interface UserPayload extends JwtPayload {
     _id: string;
     schoolId: string;
-    role: string;
+    role: Exclude<IUserRole, null>;
     isPlatformAdmin: boolean;
     userName: string
 }

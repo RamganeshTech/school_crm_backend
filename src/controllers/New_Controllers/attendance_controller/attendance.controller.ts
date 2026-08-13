@@ -6,6 +6,7 @@ import StudentRecordModel from "../../../models/New_Model/StudentModel/StudentRe
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
+import { createNotification } from "../notification_controller/notfication.controller.js";
 
 
 const getMidnightDate = (dateString: string) => {
@@ -199,6 +200,29 @@ export const markAttendance = async (req: RoleBasedRequest, res: Response) => {
                 records: records, // Save the list exactly as sent
                 corrections: []
             });
+        }
+
+
+        // --- NOTIFY PARENTS: absent/non-present students ---
+        try {
+            // const nonPresentRecords = records.filter((r: any) => r.status && r.status !== 'Present');
+            const nonPresentRecords = records.filter((r: any) => r.status && r.status.toLowerCase() !== 'present');
+
+            for (const rec of nonPresentRecords) {
+                await createNotification(req, {
+                    type: 'attendance',
+                    title: `Attendance: ${rec.status}`,
+                    message: `${rec.studentName} was marked ${rec.status} on ${date}`,
+                    referenceId: attendanceDoc._id.toString(),
+                    referenceModel: 'Attendance',
+                    path: `/dashboard/student/attendance`,
+                    targetAudience: 'parent',
+                    targetStudents: [rec.studentId],
+                    academicYear,
+                });
+            }
+        } catch (notifyError) {
+            console.error('Attendance notification failed, but attendance was saved:', notifyError);
         }
 
         await createAuditLog(req, {

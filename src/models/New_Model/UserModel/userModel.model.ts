@@ -15,11 +15,14 @@ export interface IUpload {
   uploadedAt: Date;
 }
 
+
+ export type IUserRole = "correspondent" | "teacher" | "principal" | "viceprincipal" | "administrator" | "parent" | "accountant" | null;
+ 
 export interface IUser extends Document {
   email?: string;
   userName: string;
   password: string;
-  role: "correspondent" | "teacher" | "principal" | "viceprincipal" | "administrator" | "parent" | "accountant" | null;
+  role: IUserRole
   phoneNo?: string;
   schoolCode?: string | null;
   schoolId: Types.ObjectId | null;

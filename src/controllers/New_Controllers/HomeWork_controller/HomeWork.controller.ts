@@ -3,6 +3,7 @@ import HomeworkModel from "../../../models/New_Model/HomeWork_model/HomeWork.mod
 import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
+import { createNotification } from "../notification_controller/notfication.controller.js";
 
 
 
@@ -73,6 +74,29 @@ export const createHomework = async (req: RoleBasedRequest, res: Response) => {
             { $push: { subjects: newSubjectEntry } },
             { upsert: true, new: true }
         );
+
+        const getNotificationPath = (audience: 'all' | 'parent' | 'teacher' | 'specific_classes'): string => {
+            if (audience === 'parent') return '/dashboard/student/homework-submission';
+            return '/dashboard/homework'; // staff-facing
+        };
+
+        // --- NOTIFY PARENTS: new homework assigned ---
+        try {
+            await createNotification(req, {
+                type: 'homework',
+                title: `New homework: ${subjectName}`,
+                message: description || `Homework assigned for ${subjectName}`,
+                referenceId: homework._id.toString(),
+                referenceModel: 'HomeWorkModel',
+                path: getNotificationPath('parent'), // frontend fills studentId from logged-in parent context
+                targetAudience: 'parent',
+                targetClasses: [classId],
+                targetSections: sectionId ? [sectionId] : [],
+                academicYear,
+            });
+        } catch (notifyError) {
+            console.error('Homework notification failed, but homework was saved:', notifyError);
+        }
 
         return res.status(201).json({ ok: true, data: homework });
     } catch (error: any) {
