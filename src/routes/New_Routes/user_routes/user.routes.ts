@@ -63,7 +63,9 @@ userRoutes.get(
 userRoutes.post("/forgot-password", requestPasswordReset);
 userRoutes.post("/reset-password/:id/:token", resetPassword);
 
-userRoutes.post("/register-fcm-token", registerFcmToken);
+userRoutes.post("/register-fcm-token",
+    multiRoleAuth("correspondent", "teacher", "principal", "administrator", "viceprincipal", "parent", "accountant"),
+    registerFcmToken);
 
 
 
