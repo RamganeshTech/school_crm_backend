@@ -4,9 +4,11 @@ import { Types } from 'mongoose';
 import type { RoleBasedRequest } from '../../../utils/types.js';
 import NotificationModel from '../../../models/New_Model/notification_model/notification.model.js';
 import type { IUserRole } from '../../../models/New_Model/UserModel/userModel.model.js';
+import { messaging } from '../../../config/firebaseAdmin.js';
+import { getFcmTokensForAudience } from '../../../utils/getFcmTokensForAudience.js';
 
 // Roles allowed to create notifications — same staff set used elsewhere, parents never create these
-const CREATOR_ROLES:IUserRole[] = ['correspondent', 'principal', 'viceprincipal', 'teacher', 'administrator'];
+const CREATOR_ROLES: IUserRole[] = ['correspondent', 'principal', 'viceprincipal', 'teacher', 'administrator'];
 
 // Maps a logged-in user's role to which targetAudience values they should see.
 // NOTE: this does not yet handle 'specific_classes' matching against the user's actual
@@ -30,7 +32,7 @@ export interface CreateNotificationPayload {
     targetAudience: 'all' | 'parent' | 'teacher' | 'specific_classes';
     targetClasses?: string[];
     targetSections?: string[];
-     targetStudents?: string[];
+    targetStudents?: string[];
     academicYear?: string;
 }
 
@@ -42,7 +44,7 @@ export const createNotification = async (
 ) => {
     try {
         const user = req.user;
-        
+
         if (!user) {
             return { ok: false, message: 'Unauthorized' };
         }
@@ -93,17 +95,44 @@ export const createNotification = async (
             readBy: [],
         });
 
-        return { 
-            ok: true, 
-            data: notification, 
-            message: 'Notification created successfully' 
+        try {
+            const tokens = await getFcmTokensForAudience({
+                schoolId: user.schoolId,
+                targetAudience,
+                targetClasses: targetClasses ?? [],
+                targetSections: targetSections ?? [],
+                targetStudents: targetStudents ?? [],
+            });
+
+            if (tokens.length > 0) {
+                await messaging.sendEachForMulticast({
+                    tokens,
+                    notification: {
+                        title: notification.title,
+                        body: notification.message,
+                    },
+                    data: {
+                        notificationId: notification._id.toString(),
+                        referenceId: notification.referenceId.toString(),
+                        referenceModel: notification.referenceModel,
+                    },
+                });
+            }
+        } catch (pushError) {
+            console.error('FCM push failed, but notification was saved:', pushError);
+        }
+
+        return {
+            ok: true,
+            data: notification,
+            message: 'Notification created successfully'
         };
 
     } catch (error: any) {
         console.error("Internal Notification Error:", error);
-        return { 
-            ok: false, 
-            message: error.message || 'Failed to create notification internally' 
+        return {
+            ok: false,
+            message: error.message || 'Failed to create notification internally'
         };
     }
 };

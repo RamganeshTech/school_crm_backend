@@ -30,6 +30,7 @@ export interface IUser extends Document {
   assignments: IUserAssignment[];
   studentId: Types.ObjectId[]; // Links to children if role is parent
   profileImage: IUpload | null
+  fcmtokens: string[]
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,6 +68,7 @@ const userSchema = new Schema<IUser>(
     profileImage: {
       type: uploadSchema, default: null
     },
+    fcmTokens: [{ type: String }], // one user can have multiple devices
 
     // only for teachers
     assignments: { type: [assignmentSchema] },

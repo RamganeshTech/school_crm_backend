@@ -1119,6 +1119,26 @@ export const getParentStudents = async (req: RoleBasedRequest, res: Response) =>
 
 
 
+export const registerFcmToken = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ ok: false, message: 'Unauthorized' });
+        }
 
+        const { fcmToken } = req.body;
+        if (!fcmToken) {
+            return res.status(400).json({ ok: false, message: 'fcmToken is required' });
+        }
 
+        // $addToSet avoids duplicate tokens if the same device registers twice
+        await UserModel.updateOne(
+            { _id: user._id },
+            { $addToSet: { fcmTokens: fcmToken } }
+        );
 
+        return res.status(200).json({ ok: true, message: 'FCM token registered' });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message || 'Failed to register FCM token' });
+    }
+};
