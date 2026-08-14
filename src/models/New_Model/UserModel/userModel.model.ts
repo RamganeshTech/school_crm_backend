@@ -30,7 +30,7 @@ export interface IUser extends Document {
   assignments: IUserAssignment[];
   studentId: Types.ObjectId[]; // Links to children if role is parent
   profileImage: IUpload | null
-  fcmtokens: string[]
+  fcmTokens: string[]
   createdAt: Date;
   updatedAt: Date;
 }
