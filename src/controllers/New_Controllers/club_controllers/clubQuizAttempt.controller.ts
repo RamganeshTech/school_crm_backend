@@ -6,9 +6,13 @@ import type { RoleBasedRequest } from "../../../utils/types.js";
 // CREATE: Submit Quiz Attempt (with Auto-Grading)
 export const createQuizAttempt = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { quizId, studentAnswers, classId, sectionId, academicYear } = req.body;
-        const studentId = req.user?._id;
+        const { quizId, studentAnswers, classId, sectionId, academicYear, studentId } = req.body;
         const schoolId = req.user?.schoolId;
+
+
+        if (!studentId) {
+            return res.status(404).json({ ok: false, message: "studentId is required" });
+        }
 
         // 1. Fetch the original quiz to grade against
         const quiz = await ClubQuizModel.findById(quizId);
@@ -86,7 +90,7 @@ export const createQuizAttempt = async (req: RoleBasedRequest, res: Response) =>
 export const getAllAttempts = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { quizId, classId, sectionId, studentId, page = 1, limit = 10, academicYear } = req.query;
-        const schoolId = req?.query?.schoolId ||  req.user?.schoolId;
+        const schoolId = req?.query?.schoolId || req.user?.schoolId;
 
         const filter: any = { schoolId };
         if (quizId) filter.quizId = quizId;
