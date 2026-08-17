@@ -200,6 +200,7 @@ export const getSingleClubQuiz = async (req: RoleBasedRequest, res: Response) =>
 export const deleteClubQuiz = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { id } = req.params;
+
         const deletedQuiz = await ClubQuizModel.findOneAndDelete({ _id: id, schoolId: req.user?.schoolId });
 
         if (!deletedQuiz) {

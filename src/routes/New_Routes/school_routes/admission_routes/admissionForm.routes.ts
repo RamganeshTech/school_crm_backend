@@ -42,7 +42,7 @@ schoolAdmissionFormRoutes.get(
 // 2. Get a SINGLE admission form by its ID
 schoolAdmissionFormRoutes.get(
     '/form', 
-    multiRoleAuth("correspondent", "administrator", "principal"), 
+    multiRoleAuth("correspondent", "administrator", "principal", "parent"), 
     getSingleAdmissionForm
 );
 
