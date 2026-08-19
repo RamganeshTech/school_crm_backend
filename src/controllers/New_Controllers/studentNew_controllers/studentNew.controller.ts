@@ -679,7 +679,7 @@ export const getAllStudentsWithoutPaginationV1 = async (req: RoleBasedRequest, r
         if (sectionId) filter.currentSectionId = sectionId;
 
         // Search Logic (Name OR SR-ID)
-        if (search) { 
+        if (search) {
             filter.$or = [
                 { studentName: { $regex: search, $options: "i" } },
                 { srId: { $regex: search, $options: "i" } }
@@ -933,7 +933,7 @@ export const getPendingRequestsForStudent = async (req: RoleBasedRequest, res: R
 // ==========================================
 export const getAllPendingRequests = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const schoolId =  req.query.schoolId || req.user?.schoolId;
+        const schoolId = req.query.schoolId || req.user?.schoolId;
         const status = req.query.status || "pending";
 
         if (!schoolId) {
@@ -1031,5 +1031,235 @@ export const reviewProfileUpdateRequest = async (req: RoleBasedRequest, res: Res
         session.endSession();
         console.error("Review Request Error:", error);
         return res.status(500).json({ ok: false, message: error.message || "Internal server error", error: error?.message });
+    }
+};
+
+
+
+import ExcelJS from "exceljs";
+
+// Shared between list + export so filters never drift apart
+function buildStudentFilters(query: any) {
+    const {
+        schoolId, classId, sectionId, search,
+        isActive, newOld, gender, bloodGroup,
+        admissionNumber, admissionDate, rollNumber, mobileNumber
+    } = query;
+
+    const filter: any = { schoolId };
+
+    if (classId) filter.currentClassId = classId;
+    if (sectionId) filter.currentSectionId = sectionId;
+
+    if (search) {
+        filter.$or = [
+            { studentName: { $regex: search, $options: "i" } },
+            { srId: { $regex: search, $options: "i" } }
+        ];
+    }
+
+    if (admissionNumber) filter["nonMandatory.admissionNumber"] = { $regex: admissionNumber, $options: "i" };
+    if (admissionDate) filter["nonMandatory.admissionDate"] = admissionDate;
+    if (rollNumber) filter["nonMandatory.rollNumber"] = { $regex: rollNumber, $options: "i" };
+
+    if (isActive !== undefined && isActive !== '') filter.isActive = isActive === 'true';
+    if (newOld) filter.newOld = { $regex: newOld, $options: "i" };
+    if (gender) filter["mandatory.gender"] = gender;
+    if (bloodGroup) filter["mandatory.bloodGroup"] = bloodGroup;
+    if (mobileNumber) filter["mandatory.mobileNumber"] = { $regex: mobileNumber, $options: "i" };
+
+    return filter;
+}
+
+export const exportStudentsV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { schoolId } = req.query;
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        const filter = buildStudentFilters(req.query);
+
+        const students = await StudentNewModel.find(filter)
+            .select("-__v")
+            .populate("currentClassId", "name")
+            .populate("currentSectionId", "name")
+            .sort({ createdAt: -1 })
+            .lean();
+
+        if (!students.length) {
+            return res.status(404).json({ ok: false, message: "No students found for the given filters" });
+        }
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Students");
+
+        sheet.columns = [
+            { header: "_id", key: "_id", width: 26 },
+            { header: "schoolId", key: "schoolId", width: 26 },
+            { header: "srId", key: "srId", width: 12 },
+            { header: "newOld", key: "newOld", width: 10 },
+            { header: "studentName", key: "studentName", width: 22 },
+            { header: "currentClassId", key: "currentClassId", width: 26 },
+            { header: "currentClassName", key: "currentClassName", width: 14 },
+            { header: "currentSectionId", key: "currentSectionId", width: 26 },
+            { header: "currentSectionName", key: "currentSectionName", width: 14 },
+            { header: "isActive", key: "isActive", width: 10 },
+            { header: "profileStatus", key: "profileStatus", width: 14 },
+
+            // mandatory.*
+            { header: "mandatory.gender", key: "gender", width: 10 },
+            { header: "mandatory.dob", key: "dob", width: 14 },
+            { header: "mandatory.educationNumber", key: "educationNumber", width: 18 },
+            { header: "mandatory.motherName", key: "motherName", width: 20 },
+            { header: "mandatory.fatherName", key: "fatherName", width: 20 },
+            { header: "mandatory.guardianName", key: "guardianName", width: 20 },
+            { header: "mandatory.aadhaarNumber", key: "aadhaarNumber", width: 18 },
+            { header: "mandatory.aadhaarName", key: "aadhaarName", width: 20 },
+            { header: "mandatory.address", key: "address", width: 30 },
+            { header: "mandatory.pincode", key: "pincode", width: 10 },
+            { header: "mandatory.mobileNumber", key: "mobileNumber", width: 14 },
+            { header: "mandatory.alternateMobile", key: "alternateMobile", width: 14 },
+            { header: "mandatory.email", key: "email", width: 22 },
+            { header: "mandatory.motherTongue", key: "motherTongue", width: 14 },
+            { header: "mandatory.socialCategory", key: "socialCategory", width: 16 },
+            { header: "mandatory.minorityGroup", key: "minorityGroup", width: 14 },
+            { header: "mandatory.bpl", key: "bpl", width: 8 },
+            { header: "mandatory.aay", key: "aay", width: 8 },
+            { header: "mandatory.ews", key: "ews", width: 8 },
+            { header: "mandatory.cwsn", key: "cwsn", width: 8 },
+            { header: "mandatory.impairments", key: "impairments", width: 16 },
+            { header: "mandatory.indian", key: "indian", width: 8 },
+            { header: "mandatory.outOfSchool", key: "outOfSchool", width: 12 },
+            { header: "mandatory.mainstreamedDate", key: "mainstreamedDate", width: 16 },
+            { header: "mandatory.disabilityCert", key: "disabilityCert", width: 14 },
+            { header: "mandatory.disabilityPercent", key: "disabilityPercent", width: 16 },
+            { header: "mandatory.bloodGroup", key: "bloodGroup", width: 10 },
+
+            // nonMandatory.*
+            { header: "nonMandatory.facilitiesProvided", key: "facilitiesProvided", width: 18 },
+            { header: "nonMandatory.facilitiesForCWSN", key: "facilitiesForCWSN", width: 18 },
+            { header: "nonMandatory.screenedForSLD", key: "screenedForSLD", width: 14 },
+            { header: "nonMandatory.sldType", key: "sldType", width: 12 },
+            { header: "nonMandatory.screenedForASD", key: "screenedForASD", width: 14 },
+            { header: "nonMandatory.screenedForADHD", key: "screenedForADHD", width: 14 },
+            { header: "nonMandatory.isGiftedOrTalented", key: "isGiftedOrTalented", width: 16 },
+            { header: "nonMandatory.participatedInCompetitions", key: "participatedInCompetitions", width: 20 },
+            { header: "nonMandatory.participatedInActivities", key: "participatedInActivities", width: 20 },
+            { header: "nonMandatory.canHandleDigitalDevices", key: "canHandleDigitalDevices", width: 18 },
+            { header: "nonMandatory.heightInCm", key: "heightInCm", width: 12 },
+            { header: "nonMandatory.weightInKg", key: "weightInKg", width: 12 },
+            { header: "nonMandatory.distanceToSchool", key: "distanceToSchool", width: 14 },
+            { header: "nonMandatory.parentEducationLevel", key: "parentEducationLevel", width: 18 },
+            { header: "nonMandatory.admissionNumber", key: "admissionNumber", width: 16 },
+            { header: "nonMandatory.admissionDate", key: "admissionDate", width: 14 },
+            { header: "nonMandatory.rollNumber", key: "rollNumber", width: 12 },
+            { header: "nonMandatory.mediumOfInstruction", key: "mediumOfInstruction", width: 16 },
+            { header: "nonMandatory.languagesStudied", key: "languagesStudied", width: 16 },
+            { header: "nonMandatory.academicStream", key: "academicStream", width: 14 },
+            { header: "nonMandatory.subjectsStudied", key: "subjectsStudied", width: 18 },
+            { header: "nonMandatory.statusInPreviousYear", key: "statusInPreviousYear", width: 16 },
+            { header: "nonMandatory.gradeStudiedLastYear", key: "gradeStudiedLastYear", width: 16 },
+            { header: "nonMandatory.enrolledUnder", key: "enrolledUnder", width: 14 },
+            { header: "nonMandatory.previousResult", key: "previousResult", width: 14 },
+            { header: "nonMandatory.marksObtainedPercentage", key: "marksObtainedPercentage", width: 18 },
+            { header: "nonMandatory.daysAttendedLastYear", key: "daysAttendedLastYear", width: 16 },
+
+            { header: "admissionRefId", key: "admissionRefId", width: 26 },
+            { header: "createdAt", key: "createdAt", width: 22 },
+            { header: "updatedAt", key: "updatedAt", width: 22 },
+        ];
+
+        sheet.getRow(1).font = { bold: true };
+
+        for (const s of students as any[]) {
+            const m = s.mandatory ?? {};
+            const nm = s.nonMandatory ?? {};
+
+            sheet.addRow({
+                _id: s._id?.toString() ?? "",
+                schoolId: s.schoolId?.toString() ?? "",
+                srId: s.srId ?? "",
+                newOld: s.newOld ?? "",
+                studentName: s.studentName ?? "",
+                currentClassId: s.currentClassId?._id?.toString() ?? s.currentClassId?.toString() ?? "",
+                currentClassName: s.currentClassId?.name ?? "",
+                currentSectionId: s.currentSectionId?._id?.toString() ?? s.currentSectionId?.toString() ?? "",
+                currentSectionName: s.currentSectionId?.name ?? "",
+                isActive: s.isActive ?? false,
+                profileStatus: s.profileStatus ?? "",
+
+                gender: m.gender ?? "",
+                dob: m.dob ? new Date(m.dob).toISOString().split("T")[0] : "",
+                educationNumber: m.educationNumber ?? "",
+                motherName: m.motherName ?? "",
+                fatherName: m.fatherName ?? "",
+                guardianName: m.guardianName ?? "",
+                aadhaarNumber: m.aadhaarNumber ?? "",
+                aadhaarName: m.aadhaarName ?? "",
+                address: m.address ?? "",
+                pincode: m.pincode ?? "",
+                mobileNumber: m.mobileNumber ?? "",
+                alternateMobile: m.alternateMobile ?? "",
+                email: m.email ?? "",
+                motherTongue: m.motherTongue ?? "",
+                socialCategory: m.socialCategory ?? "",
+                minorityGroup: m.minorityGroup ?? "",
+                bpl: m.bpl ?? "",
+                aay: m.aay ?? "",
+                ews: m.ews ?? "",
+                cwsn: m.cwsn ?? "",
+                impairments: m.impairments ?? "",
+                indian: m.indian ?? "",
+                outOfSchool: m.outOfSchool ?? "",
+                mainstreamedDate: m.mainstreamedDate ?? "",
+                disabilityCert: m.disabilityCert ?? "",
+                disabilityPercent: m.disabilityPercent ?? "",
+                bloodGroup: m.bloodGroup ?? "",
+
+                facilitiesProvided: nm.facilitiesProvided ?? "",
+                facilitiesForCWSN: nm.facilitiesForCWSN ?? "",
+                screenedForSLD: nm.screenedForSLD ?? "",
+                sldType: nm.sldType ?? "",
+                screenedForASD: nm.screenedForASD ?? "",
+                screenedForADHD: nm.screenedForADHD ?? "",
+                isGiftedOrTalented: nm.isGiftedOrTalented ?? "",
+                participatedInCompetitions: nm.participatedInCompetitions ?? "",
+                participatedInActivities: nm.participatedInActivities ?? "",
+                canHandleDigitalDevices: nm.canHandleDigitalDevices ?? "",
+                heightInCm: nm.heightInCm ?? "",
+                weightInKg: nm.weightInKg ?? "",
+                distanceToSchool: nm.distanceToSchool ?? "",
+                parentEducationLevel: nm.parentEducationLevel ?? "",
+                admissionNumber: nm.admissionNumber ?? "",
+                admissionDate: nm.admissionDate ?? "",
+                rollNumber: nm.rollNumber ?? "",
+                mediumOfInstruction: nm.mediumOfInstruction ?? "",
+                languagesStudied: nm.languagesStudied ?? "",
+                academicStream: nm.academicStream ?? "",
+                subjectsStudied: nm.subjectsStudied ?? "",
+                statusInPreviousYear: nm.statusInPreviousYear ?? "",
+                gradeStudiedLastYear: nm.gradeStudiedLastYear ?? "",
+                enrolledUnder: nm.enrolledUnder ?? "",
+                previousResult: nm.previousResult ?? "",
+                marksObtainedPercentage: nm.marksObtainedPercentage ?? "",
+                daysAttendedLastYear: nm.daysAttendedLastYear ?? "",
+
+                admissionRefId: s.admissionRefId?.toString() ?? "",
+                createdAt: s.createdAt ? new Date(s.createdAt).toISOString() : "",
+                updatedAt: s.updatedAt ? new Date(s.updatedAt).toISOString() : "",
+            });
+        }
+
+        const fileName = `students_${schoolId}_${Date.now()}.xlsx`;
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error: any) {
+        console.error("Export Students Error:", error);
+        return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
     }
 };

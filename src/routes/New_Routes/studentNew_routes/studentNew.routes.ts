@@ -1,5 +1,5 @@
 import express from "express";
-import { assignStudentToParent, createStudentProfile, deleteStudent, deleteStudentDocument, getAllPendingRequests, getAllStudents, getAllStudentsWithoutPaginationV1, getPendingRequestsForStudent, getStudentById, removeStudentFromParent, reviewProfileUpdateRequest, submitProfileUpdateRequest, updateStudent, uploadStudentFiles } from "../../../controllers/New_Controllers/studentNew_controllers/studentNew.controller.js";
+import { assignStudentToParent, createStudentProfile, deleteStudent, deleteStudentDocument, exportStudentsV1, getAllPendingRequests, getAllStudents, getAllStudentsWithoutPaginationV1, getPendingRequestsForStudent, getStudentById, removeStudentFromParent, reviewProfileUpdateRequest, submitProfileUpdateRequest, updateStudent, uploadStudentFiles } from "../../../controllers/New_Controllers/studentNew_controllers/studentNew.controller.js";
 // import { upload } from "../../../Utils/s3upload.js";
 import { multiRoleAuth } from "../../../middleware/multiRoleRequest.js";
 import { upload } from "../../../utils/s4UploadsNew.js";
@@ -148,6 +148,13 @@ studentRoutes.put(
   multiRoleAuth("correspondent", "administrator", "principal"),
   featureGuard("studentRecord"),
   reviewProfileUpdateRequest
+);
+
+
+studentRoutes.get(
+  "/v1/export",
+  multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"),
+  exportStudentsV1
 );
 
 export default studentRoutes;

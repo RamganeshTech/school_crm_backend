@@ -186,7 +186,7 @@ export const getAllClubQuizzes = async (req: RoleBasedRequest, res: Response) =>
 export const getSingleClubQuiz = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const quiz = await ClubQuizModel.findOne({ _id: id, schoolId: req.user?.schoolId });
+        const quiz = await ClubQuizModel.findOne({ _id: id });
 
         if (!quiz) return res.status(404).json({ ok: false, message: "Quiz not found" });
 
@@ -201,7 +201,7 @@ export const deleteClubQuiz = async (req: RoleBasedRequest, res: Response) => {
     try {
         const { id } = req.params;
 
-        const deletedQuiz = await ClubQuizModel.findOneAndDelete({ _id: id, schoolId: req.user?.schoolId });
+        const deletedQuiz = await ClubQuizModel.findOneAndDelete({ _id: id, });
 
         if (!deletedQuiz) {
             return res.status(404).json({ ok: false, message: "Quiz not found or unauthorized" });

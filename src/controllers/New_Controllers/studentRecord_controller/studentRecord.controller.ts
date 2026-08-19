@@ -22,6 +22,7 @@ import BillBookRecordModel from "../../../models/New_Model/SchoolModel/billBook_
 import BusRouteModel from "../../../models/New_Model/transport_model/busRoute.model.js";
 // import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 
+import ExcelJS from "exceljs";
 
 
 
@@ -3539,5 +3540,427 @@ export const updateStudentRecordNewOldType = async (req: RoleBasedRequest, res: 
     } catch (error: any) {
         console.error("student record new old type update V1 Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error" });
+    }
+};
+
+
+// Shared between list + export so filters never drift apart
+function buildStudentRecordFilters(query: any) {
+    const {
+        schoolId, search, classId, sectionId,
+        isActive, phone, feeStatus, isFullyPaid, hasConcession, hasBusPoint
+    } = query;
+
+    const initialMatch: any = { schoolId: new mongoose.Types.ObjectId(schoolId as string) };
+    if (search) {
+        const searchRegex = new RegExp(search as string, "i");
+        initialMatch.$or = [{ studentName: searchRegex }, { srId: searchRegex }];
+    }
+
+    const postLookupMatch: any = {};
+    if (classId) postLookupMatch["recordData.classId"] = new mongoose.Types.ObjectId(classId as string);
+    if (sectionId) postLookupMatch["recordData.sectionId"] = new mongoose.Types.ObjectId(sectionId as string);
+    if (phone) postLookupMatch["recordData.mandatory.mobileNumber"] = phone;
+    if (feeStatus) {
+        postLookupMatch["recordData.feeStatus"] = feeStatus === "paid" ? feeStatus : { $ne: "paid" };
+    }
+    if (isActive !== undefined) postLookupMatch["recordData.isActive"] = isActive === 'true';
+    if (isFullyPaid !== undefined) postLookupMatch["recordData.isFullyPaid"] = isFullyPaid === 'true';
+    if (hasConcession !== undefined) postLookupMatch["recordData.concession.isApplied"] = hasConcession === 'true';
+    if (hasBusPoint !== undefined) {
+        postLookupMatch["recordData.busPoint"] = hasBusPoint === 'true' ? { $ne: null } : null;
+    }
+
+    return { initialMatch, postLookupMatch };
+}
+
+// export const exportStudentRecordsV1 = async (req: RoleBasedRequest, res: Response) => {
+//     try {
+//         const { schoolId, academicYear } = req.query;
+//         if (!schoolId) return res.status(400).json({ ok: false, message: "schoolId is required" });
+//         if (!academicYear) return res.status(400).json({ ok: false, message: "academicYear is required" });
+
+//          // ==========================================
+//         // STEP 1: Get feeHeads for this school (defines the v1 Map keys)
+//         // ==========================================
+//         const feeConfig = await FeeStructureConfigModel.findOne({ schoolId }).lean();
+//         const feeHeads = feeConfig?.feeHeads?.map((fh: any) => fh.feeHead) ?? [];
+
+
+//         const { initialMatch, postLookupMatch } = buildStudentRecordFilters(req.query);
+
+//         const pipeline: mongoose.PipelineStage[] = [
+//             { $match: initialMatch },
+//             {
+//                 $lookup: {
+//                     from: "studentrecords",
+//                     let: { student_id: "$_id" },
+//                     pipeline: [
+//                         {
+//                             $match: {
+//                                 $expr: {
+//                                     $and: [
+//                                         { $eq: ["$studentId", "$$student_id"] },
+//                                         { $eq: ["$academicYear", academicYear] }
+//                                     ]
+//                                 }
+//                             }
+//                         }
+//                     ],
+//                     as: "recordData"
+//                 }
+//             },
+//             { $unwind: { path: "$recordData", preserveNullAndEmptyArrays: true } },
+//         ];
+
+//         if (Object.keys(postLookupMatch).length > 0) pipeline.push({ $match: postLookupMatch });
+
+//         // Export only makes sense for students that actually HAVE a record this year
+//         pipeline.push({ $match: { "recordData._id": { $exists: true } } });
+//         pipeline.push({ $sort: { studentName: 1 } });
+
+//         pipeline.push({
+//             $project: {
+//                 _id: 0,
+//                 recordId: "$recordData._id",
+//                 schoolId: "$recordData.schoolId",
+//                 studentId: "$recordData.studentId",
+//                 studentName: "$recordData.studentName",
+//                 srId: "$srId",
+//                 academicYear: "$recordData.academicYear",
+//                 classId: "$recordData.classId",
+//                 sectionId: "$recordData.sectionId",
+//                 className: "$recordData.className",
+//                 sectionName: "$recordData.sectionName",
+//                 newOld: "$recordData.newOld",
+//                 rollNumber: "$recordData.rollNumber",
+//                 feeStructure: "$recordData.feeStructure",
+//                 feeStructurev1: "$recordData.feeStructurev1",
+//                 feePaid: "$recordData.feePaid",
+//                 feePaidv1: "$recordData.feePaidv1",
+//                 concession: "$recordData.concession",
+//                 dues: "$recordData.dues",
+//                 duesv1: "$recordData.duesv1",
+//                 isActive: "$recordData.isActive",
+//                 isBusApplicable: "$recordData.isBusApplicable",
+//                 isFullyPaid: "$recordData.isFullyPaid",
+//                 busPoint: "$recordData.busPoint",
+//                 feeStatus: "$recordData.feeStatus",
+//                 createdAt: "$recordData.createdAt",
+//                 updatedAt: "$recordData.updatedAt"
+//             }
+//         });
+
+//         const records = await StudentNewModel.aggregate(pipeline);
+
+//         if (!records.length) {
+//             return res.status(404).json({ ok: false, message: "No records found for the given filters" });
+//         }
+
+//         const workbook = new ExcelJS.Workbook();
+//         const sheet = workbook.addWorksheet("StudentRecords");
+
+//         sheet.columns = [
+//             { header: "recordId", key: "recordId", width: 26 },
+//             { header: "schoolId", key: "schoolId", width: 26 },
+//             { header: "studentId", key: "studentId", width: 26 },
+//             { header: "studentName", key: "studentName", width: 22 },
+//             { header: "srId", key: "srId", width: 15 },
+//             { header: "academicYear", key: "academicYear", width: 14 },
+//             { header: "classId", key: "classId", width: 26 },
+//             { header: "sectionId", key: "sectionId", width: 26 },
+//             { header: "className", key: "className", width: 12 },
+//             { header: "sectionName", key: "sectionName", width: 12 },
+//             { header: "newOld", key: "newOld", width: 10 },
+//             { header: "rollNumber", key: "rollNumber", width: 12 },
+//             { header: "feeStructure", key: "feeStructure", width: 40 },
+//             { header: "feeStructurev1", key: "feeStructurev1", width: 40 },
+//             { header: "feePaid", key: "feePaid", width: 40 },
+//             { header: "feePaidv1", key: "feePaidv1", width: 40 },
+//             { header: "concession", key: "concession", width: 40 },
+//             { header: "dues", key: "dues", width: 40 },
+//             { header: "duesv1", key: "duesv1", width: 40 },
+//             { header: "isActive", key: "isActive", width: 10 },
+//             { header: "isBusApplicable", key: "isBusApplicable", width: 14 },
+//             { header: "isFullyPaid", key: "isFullyPaid", width: 12 },
+//             { header: "busPoint", key: "busPoint", width: 26 },
+//             { header: "feeStatus", key: "feeStatus", width: 12 },
+//             { header: "createdAt", key: "createdAt", width: 22 },
+//             { header: "updatedAt", key: "updatedAt", width: 22 },
+//         ];
+//         sheet.getRow(1).font = { bold: true };
+
+//         // Aggregation output turns Mongoose Map fields into plain objects already,
+//         // but guard for the Map instance case too (defensive)
+//         const mapToObj = (m: any) => (m instanceof Map ? Object.fromEntries(m) : (m ?? {}));
+
+//         for (const r of records) {
+//             sheet.addRow({
+//                 recordId: r.recordId?.toString() ?? "",
+//                 schoolId: r.schoolId?.toString() ?? "",
+//                 studentId: r.studentId?.toString() ?? "",
+//                 studentName: r.studentName ?? "",
+//                 srId: r.srId ?? "",
+//                 academicYear: r.academicYear ?? "",
+//                 classId: r.classId?.toString() ?? "",
+//                 sectionId: r.sectionId?.toString() ?? "",
+//                 className: r.className ?? "",
+//                 sectionName: r.sectionName ?? "",
+//                 newOld: r.newOld ?? "",
+//                 rollNumber: r.rollNumber ?? "",
+//                 feeStructure: JSON.stringify(r.feeStructure ?? {}),
+//                 feeStructurev1: JSON.stringify(mapToObj(r.feeStructurev1)),
+//                 feePaid: JSON.stringify(r.feePaid ?? {}),
+//                 feePaidv1: JSON.stringify(mapToObj(r.feePaidv1)),
+//                 concession: JSON.stringify(r.concession ?? {}),
+//                 dues: JSON.stringify(r.dues ?? {}),
+//                 duesv1: JSON.stringify(mapToObj(r.duesv1)),
+//                 isActive: r.isActive ?? false,
+//                 isBusApplicable: r.isBusApplicable ?? false,
+//                 isFullyPaid: r.isFullyPaid ?? false,
+//                 busPoint: r.busPoint?.toString() ?? "",
+//                 feeStatus: r.feeStatus ?? "unpaid",
+//                 createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : "",
+//                 updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : "",
+//             });
+//         }
+
+//         const fileName = `student_records_${academicYear}_${Date.now()}.xlsx`;
+//         res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+//         res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+//         await workbook.xlsx.write(res);
+//         res.end();
+
+//     } catch (error: any) {
+//         console.error("Export Student Records Error:", error);
+//         res.status(500).json({ ok: false, message: error.message });
+//     }
+// };
+
+
+
+export const exportStudentRecordsV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { schoolId, academicYear } = req.query;
+        if (!schoolId) return res.status(400).json({ ok: false, message: "schoolId is required" });
+        if (!academicYear) return res.status(400).json({ ok: false, message: "academicYear is required" });
+
+        // ==========================================
+        // STEP 1: Get feeHeads for this school (defines the v1 Map keys)
+        // ==========================================
+        const feeConfig = await FeeStructureConfigModel.findOne({ schoolId }).lean();
+        const feeHeads = feeConfig?.feeHeads?.map((fh: any) => fh.feeHead) ?? [];
+
+        const { initialMatch, postLookupMatch } = buildStudentRecordFilters(req.query);
+
+        const pipeline: mongoose.PipelineStage[] = [
+            { $match: initialMatch },
+            {
+                $lookup: {
+                    from: "studentrecords",
+                    let: { student_id: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$studentId", "$$student_id"] },
+                                        { $eq: ["$academicYear", academicYear] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "recordData"
+                }
+            },
+            { $unwind: { path: "$recordData", preserveNullAndEmptyArrays: true } },
+        ];
+
+        if (Object.keys(postLookupMatch).length > 0) pipeline.push({ $match: postLookupMatch });
+        pipeline.push({ $match: { "recordData._id": { $exists: true } } });
+        pipeline.push({ $sort: { studentName: 1 } });
+
+        pipeline.push({
+            $project: {
+                _id: 0,
+                recordId: "$recordData._id",
+                schoolId: "$recordData.schoolId",
+                studentId: "$recordData.studentId",
+                studentName: "$recordData.studentName",
+                academicYear: "$recordData.academicYear",
+                classId: "$recordData.classId",
+                sectionId: "$recordData.sectionId",
+                className: "$recordData.className",
+                sectionName: "$recordData.sectionName",
+                newOld: "$recordData.newOld",
+                rollNumber: "$recordData.rollNumber",
+                feeStructure: "$recordData.feeStructure",
+                feeStructurev1: "$recordData.feeStructurev1",
+                feePaid: "$recordData.feePaid",
+                feePaidv1: "$recordData.feePaidv1",
+                concession: "$recordData.concession",
+                dues: "$recordData.dues",
+                duesv1: "$recordData.duesv1",
+                isActive: "$recordData.isActive",
+                isBusApplicable: "$recordData.isBusApplicable",
+                isFullyPaid: "$recordData.isFullyPaid",
+                busPoint: "$recordData.busPoint",
+                feeStatus: "$recordData.feeStatus",
+                createdAt: "$recordData.createdAt",
+                updatedAt: "$recordData.updatedAt"
+            }
+        });
+
+        const records = await StudentNewModel.aggregate(pipeline);
+
+        if (!records.length) {
+            return res.status(404).json({ ok: false, message: "No records found for the given filters" });
+        }
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("StudentRecords");
+
+        // ==========================================
+        // STEP 2: Build columns — fixed fields + dynamic feeHead columns x3
+        // ==========================================
+        const baseColumns = [
+            { header: "recordId", key: "recordId", width: 26 },
+            { header: "schoolId", key: "schoolId", width: 26 },
+            { header: "studentId", key: "studentId", width: 26 },
+            { header: "studentName", key: "studentName", width: 22 },
+            { header: "academicYear", key: "academicYear", width: 14 },
+            { header: "classId", key: "classId", width: 26 },
+            { header: "sectionId", key: "sectionId", width: 26 },
+            { header: "className", key: "className", width: 12 },
+            { header: "sectionName", key: "sectionName", width: 12 },
+            { header: "newOld", key: "newOld", width: 10 },
+            { header: "rollNumber", key: "rollNumber", width: 12 },
+
+            { header: "feeStructure.admissionFee", key: "fs_admissionFee", width: 16 },
+            { header: "feeStructure.firstTermAmt", key: "fs_firstTermAmt", width: 16 },
+            { header: "feeStructure.secondTermAmt", key: "fs_secondTermAmt", width: 16 },
+            { header: "feeStructure.busFirstTermAmt", key: "fs_busFirstTermAmt", width: 18 },
+            { header: "feeStructure.busSecondTermAmt", key: "fs_busSecondTermAmt", width: 18 },
+
+            { header: "feePaid.admissionFee", key: "fp_admissionFee", width: 16 },
+            { header: "feePaid.firstTermAmt", key: "fp_firstTermAmt", width: 16 },
+            { header: "feePaid.secondTermAmt", key: "fp_secondTermAmt", width: 16 },
+            { header: "feePaid.busFirstTermAmt", key: "fp_busFirstTermAmt", width: 18 },
+            { header: "feePaid.busSecondTermAmt", key: "fp_busSecondTermAmt", width: 18 },
+
+            { header: "dues.admissionDues", key: "d_admissionDues", width: 16 },
+            { header: "dues.firstTermDues", key: "d_firstTermDues", width: 16 },
+            { header: "dues.secondTermDues", key: "d_secondTermDues", width: 16 },
+            { header: "dues.busfirstTermDues", key: "d_busfirstTermDues", width: 18 },
+            { header: "dues.busSecondTermDues", key: "d_busSecondTermDues", width: 18 },
+
+            { header: "concession.isApplied", key: "c_isApplied", width: 14 },
+            { header: "concession.type", key: "c_type", width: 12 },
+            { header: "concession.value", key: "c_value", width: 12 },
+            { header: "concession.inAmount", key: "c_inAmount", width: 14 },
+            { header: "concession.remark", key: "c_remark", width: 20 },
+        ];
+
+        // Dynamic columns — one per feeHead, per v1 map
+        const fsv1Columns = feeHeads.map((h: string) => ({ header: `feeStructurev1.${h}`, key: `fsv1_${h}`, width: 16 }));
+        const fpv1Columns = feeHeads.map((h: string) => ({ header: `feePaidv1.${h}`, key: `fpv1_${h}`, width: 16 }));
+        const duesv1Columns = feeHeads.map((h: string) => ({ header: `duesv1.${h}`, key: `duesv1_${h}`, width: 16 }));
+
+        const tailColumns = [
+            { header: "isActive", key: "isActive", width: 10 },
+            { header: "isBusApplicable", key: "isBusApplicable", width: 14 },
+            { header: "isFullyPaid", key: "isFullyPaid", width: 12 },
+            { header: "busPoint", key: "busPoint", width: 26 },
+            { header: "feeStatus", key: "feeStatus", width: 12 },
+            { header: "createdAt", key: "createdAt", width: 22 },
+            { header: "updatedAt", key: "updatedAt", width: 22 },
+        ];
+
+        sheet.columns = [...baseColumns, ...fsv1Columns, ...fpv1Columns, ...duesv1Columns, ...tailColumns];
+        sheet.getRow(1).font = { bold: true };
+
+        const mapToObj = (m: any) => (m instanceof Map ? Object.fromEntries(m) : (m ?? {}));
+
+        // ==========================================
+        // STEP 3: Write rows — pull each feeHead value out of the Map by key
+        // ==========================================
+        for (const r of records) {
+            const fs = r.feeStructure ?? {};
+            const fp = r.feePaid ?? {};
+            const d = r.dues ?? {};
+            const c = r.concession ?? {};
+
+            const fsv1 = mapToObj(r.feeStructurev1);
+            const fpv1 = mapToObj(r.feePaidv1);
+            const duesv1 = mapToObj(r.duesv1);
+
+            const dynamicValues: Record<string, any> = {};
+            feeHeads.forEach((h: string) => {
+                dynamicValues[`fsv1_${h}`] = fsv1[h] ?? "";
+                dynamicValues[`fpv1_${h}`] = fpv1[h] ?? "";
+                dynamicValues[`duesv1_${h}`] = duesv1[h] ?? "";
+            });
+
+            sheet.addRow({
+                recordId: r.recordId?.toString() ?? "",
+                schoolId: r.schoolId?.toString() ?? "",
+                studentId: r.studentId?.toString() ?? "",
+                studentName: r.studentName ?? "",
+                academicYear: r.academicYear ?? "",
+                classId: r.classId?.toString() ?? "",
+                sectionId: r.sectionId?.toString() ?? "",
+                className: r.className ?? "",
+                sectionName: r.sectionName ?? "",
+                newOld: r.newOld ?? "",
+                rollNumber: r.rollNumber ?? "",
+
+                fs_admissionFee: fs.admissionFee ?? 0,
+                fs_firstTermAmt: fs.firstTermAmt ?? 0,
+                fs_secondTermAmt: fs.secondTermAmt ?? 0,
+                fs_busFirstTermAmt: fs.busFirstTermAmt ?? 0,
+                fs_busSecondTermAmt: fs.busSecondTermAmt ?? 0,
+
+                fp_admissionFee: fp.admissionFee ?? 0,
+                fp_firstTermAmt: fp.firstTermAmt ?? 0,
+                fp_secondTermAmt: fp.secondTermAmt ?? 0,
+                fp_busFirstTermAmt: fp.busFirstTermAmt ?? 0,
+                fp_busSecondTermAmt: fp.busSecondTermAmt ?? 0,
+
+                d_admissionDues: d.admissionDues ?? "",
+                d_firstTermDues: d.firstTermDues ?? "",
+                d_secondTermDues: d.secondTermDues ?? "",
+                d_busfirstTermDues: d.busfirstTermDues ?? "",
+                d_busSecondTermDues: d.busSecondTermDues ?? "",
+
+                c_isApplied: c.isApplied ?? false,
+                c_type: c.type ?? "",
+                c_value: c.value ?? 0,
+                c_inAmount: c.inAmount ?? 0,
+                c_remark: c.remark ?? "",
+
+                ...dynamicValues,
+
+                isActive: r.isActive ?? false,
+                isBusApplicable: r.isBusApplicable ?? false,
+                isFullyPaid: r.isFullyPaid ?? false,
+                busPoint: r.busPoint?.toString() ?? "",
+                feeStatus: r.feeStatus ?? "unpaid",
+                createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : "",
+                updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : "",
+            });
+        }
+
+        const fileName = `student_records_${academicYear}_${Date.now()}.xlsx`;
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error: any) {
+        console.error("Export Student Records Error:", error);
+        res.status(500).json({ ok: false, message: error.message });
     }
 };

@@ -1,6 +1,7 @@
 import express from "express";
 import {
   applyConcession, applyConcessionV1, approveStudentRecordConcession, collectFeeAndManageRecord, collectFeeAndManageRecordV1, deleteStudentRecord,
+  exportStudentRecordsV1,
   getAllStudentRecords,
   getAllStudentRecordsV1,
   getStudentRecordById, getStudentRecordByIdV1, revertFeeTransaction,
@@ -176,6 +177,13 @@ studentRecordRoutes.patch(
   updateStudentRecordNewOldType
 );
 
+studentRecordRoutes.patch(
+  "/v1/update-student-type/:studentId/:schoolId",
+  multiRoleAuth("administrator", "correspondent", "accountant"),
+  featureGuard("studentRecord"),
+  updateStudentRecordNewOldType
+);
+
 
 
 
@@ -230,10 +238,10 @@ studentRecordRoutes.put(
 
 
 
-studentRecordRoutes.put(
-  "/v1/remove",
-  multiRoleAuth("correspondent", "administrator", "accountant"),
-  removeStudentFromClassv1
+studentRecordRoutes.get(
+  "/v1/export",
+  multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"),
+  exportStudentRecordsV1
 );
 
 
