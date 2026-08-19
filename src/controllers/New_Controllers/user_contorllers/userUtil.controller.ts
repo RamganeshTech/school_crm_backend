@@ -122,7 +122,17 @@ export const getSingleUser = async (req: Request, res: Response): Promise<any> =
                 select: "name _id"             // Only get Name and ID
             })
             .populate({
-                path: "studentId"
+                path: "studentId",
+                populate: [
+                    {
+                        path: "currentClassId",
+                        select: "name _id", // adjust fields based on your Class model
+                    },
+                    {
+                        path: "currentSectionId",
+                        select: "name _id", // adjust fields based on your Section model
+                    },
+                ],
             });
 
         return res.status(200).json({

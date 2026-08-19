@@ -150,25 +150,41 @@ export const getAllNotifications = async (req: RoleBasedRequest, res: Response) 
         // const skip = (page - 1) * limit;
 
         const audienceValues = audienceValuesForRole(user.role);
+        const unreadOnly = true;
+
 
         const filter = {
             schoolId: user.schoolId,
             targetAudience: { $in: audienceValues },
+            'readBy.userId': { $ne: new Types.ObjectId(user._id) },
+
         };
 
-        const [notifications, total] = await Promise.all([
-            NotificationModel.find(filter)
-                .sort({ createdAt: -1 })
-                // .skip(skip)
-                // .limit(limit)
-                .lean(),
-            NotificationModel.countDocuments(filter),
-        ]);
+
+
+        // if (unreadOnly) {
+        //     filter['readBy.userId'] = { $ne: new Types.ObjectId(user._id) };
+        // }
+
+        // const [notifications, total] = await Promise.all([
+        //     NotificationModel.find(filter)
+        //         .sort({ createdAt: -1 })
+        //         // .skip(skip)
+        //         // .limit(limit)
+        //         .lean(),
+        //     NotificationModel.countDocuments(filter),
+        // ]);
+
+        const notifications = await NotificationModel.find(filter)
+            .sort({ createdAt: -1 })
+            .lean();
+
 
         // Attach isRead per current user without exposing the full readBy array to the client
         const data = notifications.map((n: any) => ({
             ...n,
-            isRead: (n.readBy || []).some((r: any) => r.userId?.toString() === user._id),
+            // isRead: (n.readBy || []).some((r: any) => r.userId?.toString() === user._id),
+            isRead: false, // always false here since the query already excludes read ones
             readBy: undefined,
         }));
 
