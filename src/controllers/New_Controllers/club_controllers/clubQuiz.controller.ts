@@ -5,6 +5,8 @@ import { ClubVideoModel, type IUpload } from "../../../models/New_Model/club_mod
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";
 import genAI from "../../../config/geminiConfig.js";
+import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
+import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 
 export const createClubQuiz = async (req: RoleBasedRequest, res: Response) => {
     try {
@@ -206,6 +208,24 @@ export const deleteClubQuiz = async (req: RoleBasedRequest, res: Response) => {
         if (!deletedQuiz) {
             return res.status(404).json({ ok: false, message: "Quiz not found or unauthorized" });
         }
+
+        // 2. CALL THE ARCHIVE UTILITY
+        await archiveData({
+            schoolId: deletedQuiz.schoolId,
+            category: "club quiz",
+            originalId: deletedQuiz._id,
+            deletedData: deletedQuiz.toObject(), // Convert Mongoose doc to plain object
+            deletedBy: req.user?._id || null,
+            reason: null, // Optional reason from body
+        });
+
+        await createAuditLog(req, {
+            action: "delete",
+            module: "club quiz",
+            targetId: deletedQuiz._id,
+            description: `club got deleted (${deletedQuiz._id})`,
+            status: "success"
+        });
 
         res.status(200).json({ ok: true, message: "Quiz deleted successfully" });
     } catch (error: any) {

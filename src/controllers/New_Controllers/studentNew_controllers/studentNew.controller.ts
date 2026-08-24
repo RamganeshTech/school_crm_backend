@@ -5,12 +5,8 @@
 import type { Response } from "express";
 import StudentNewModel from "../../../models/New_Model/StudentModel/studentNew.model.js";
 import UserModel from "../../../models/New_Model/UserModel/userModel.model.js";
-// import { isValidPhone } from "../../../Utils/basicValidation.js";
-// import { uploadImageToS3 } from "../../../Utils/s3upload.js";
 import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
-// import { createAuditLog } from "../audit_controllers/audit.controllers.js";
-// import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import StudentProfileUpdate from "../../../models/New_Model/StudentModel/studentProfileUpdate_model/studentProfileUpdate.model.js";

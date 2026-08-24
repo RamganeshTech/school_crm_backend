@@ -6,10 +6,7 @@ import FeeStructureModel from "../../../models/New_Model/FeeStructureModel/FeeSt
 import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import ClassModel from "../../../models/New_Model/SchoolModel/classModel.model.js";
 import SectionModel from "../../../models/New_Model/SchoolModel/section.model.js";
-// import { uploadImageToS3 } from "../../../Utils/s3upload.js";
 import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
-// import { createLedgerEntry } from "../financeLedger_controller/financeLedger.controller.js";
-// import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import { FinanceLedgerModel } from "../../../models/New_Model/financeLedger_model/financeLedger.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";

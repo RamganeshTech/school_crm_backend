@@ -52,9 +52,65 @@ export const archiveData = async ({
 // ---------------------------------------------------
 // 1. GET ALL ARCHIVED ITEMS (With Pagination & Filters)
 // ---------------------------------------------------
+// export const getAllDeletedItems = async (req: RoleBasedRequest, res: Response) => {
+//     try {
+//         const { schoolId, category, page = "1", limit = "10" } = req.query;
+
+//         if (!schoolId) {
+//             return res.status(400).json({ ok: false, message: "schoolId is required" });
+//         }
+
+//         // Build Query
+//         const query: any = { schoolId: new mongoose.Types.ObjectId(schoolId as string) };
+
+//         // Optional: Filter by specific category (e.g., only show deleted 'Expense')
+//         if (category && typeof category === "string") {
+//             // query.category = category
+//             query.category = { $regex: new RegExp(category as string, "i") };
+//         }
+
+//         const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+//         // Fetch Data
+//         const archives = await DeletedArchiveModel.find(query)
+//             .populate("deletedBy", "userName role _id") // Show who deleted it
+//             .sort({ deletedAt: -1 }) // Newest deleted first
+//             .skip(skip)
+//             .limit(parseInt(limit as string));
+
+//         // Get Count
+//         const totalDocs = await DeletedArchiveModel.countDocuments(query);
+
+//         res.status(200).json({
+//             ok: true,
+//             message: "Archived items fetched successfully",
+//             data: archives,
+//             pagination: {
+//                 total: totalDocs,
+//                 currentPage: parseInt(page as string),
+//                 totalPages: Math.ceil(totalDocs / parseInt(limit as string)),
+//                 limit: parseInt(limit as string)
+//             }
+//         });
+
+//     } catch (error: any) {
+//         console.error("Get All Archive Error:", error);
+//         res.status(500).json({ ok: false, message: "Failed to fetch archives", error: error.message });
+//     }
+// };
+
 export const getAllDeletedItems = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { schoolId, category, page = "1", limit = "10" } = req.query;
+        const { 
+            schoolId, 
+            category, 
+            deletedBy, 
+            search, 
+            fromDate, 
+            toDate, 
+            page = "1", 
+            limit = "10" 
+        } = req.query;
 
         if (!schoolId) {
             return res.status(400).json({ ok: false, message: "schoolId is required" });
@@ -63,23 +119,48 @@ export const getAllDeletedItems = async (req: RoleBasedRequest, res: Response) =
         // Build Query
         const query: any = { schoolId: new mongoose.Types.ObjectId(schoolId as string) };
 
-        // Optional: Filter by specific category (e.g., only show deleted 'Expense')
+        // Filter by Category
         if (category && typeof category === "string") {
-            // query.category = category
-            query.category = { $regex: new RegExp(category as string, "i") };
+            query.category = { $regex: new RegExp(category, "i") };
+        }
+
+        // Filter by the Staff member who deleted it
+        if (deletedBy && mongoose.Types.ObjectId.isValid(deletedBy as string)) {
+            query.deletedBy = new mongoose.Types.ObjectId(deletedBy as string);
+        }
+
+        // Date Range Filter (When was it deleted?)
+        if (fromDate || toDate) {
+            query.deletedAt = {};
+            if (fromDate) query.deletedAt.$gte = new Date(fromDate as string);
+            if (toDate) {
+                const endDate = new Date(toDate as string);
+                endDate.setHours(23, 59, 59, 999);
+                query.deletedAt.$lte = endDate;
+            }
+        }
+
+        // Text Search (Searches the reason or the category)
+        if (search) {
+            const searchRegex = { $regex: search as string, $options: 'i' };
+            query.$or = [
+                { reason: searchRegex },
+                { category: searchRegex }
+            ];
         }
 
         const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
         // Fetch Data
-        const archives = await DeletedArchiveModel.find(query)
-            .populate("deletedBy", "userName role _id") // Show who deleted it
-            .sort({ deletedAt: -1 }) // Newest deleted first
-            .skip(skip)
-            .limit(parseInt(limit as string));
-
-        // Get Count
-        const totalDocs = await DeletedArchiveModel.countDocuments(query);
+        const [archives, totalDocs] = await Promise.all([
+            DeletedArchiveModel.find(query)
+                .populate("deletedBy", "userName role _id") // Show who deleted it
+                .sort({ deletedAt: -1 }) // Newest deleted first
+                .skip(skip)
+                .limit(parseInt(limit as string))
+                .lean(), // 🌟 Added lean for performance
+            DeletedArchiveModel.countDocuments(query)
+        ]);
 
         res.status(200).json({
             ok: true,

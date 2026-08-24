@@ -4,6 +4,7 @@ import { uploadFileToS3New } from "../../../utils/s4UploadsNew.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import SchoolModel from "../../../models/New_Model/SchoolModel/schoolModel.model.js";
 import { createNotification } from "../notification_controller/notfication.controller.js";
+import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 
 
 
@@ -229,6 +230,15 @@ export const deleteSubjectFromHomework = async (req: RoleBasedRequest, res: Resp
             return res.status(404).json({ ok: false, message: "Homework document not found" });
         }
 
+        //  await archiveData({
+        //     schoolId: deletedDoc?.schoolId!,
+        //     category: "homework",
+        //     originalId: deletedDoc._id,
+        //     deletedData: deletedDoc.toObject(), // Convert Mongoose doc to plain object
+        //     deletedBy: req.user!._id || null,
+        //     reason: null, // Optional reason from body
+        // });
+
         return res.status(200).json({
             ok: true,
             message: "Subject removed from today's homework",
@@ -282,6 +292,15 @@ export const deleteDailyHomework = async (req: RoleBasedRequest, res: Response) 
 
         // Optional: If you want to be extra thorough, you could trigger 
         // a function here to delete all files in deletedDoc.subjects.attachments from S3.
+
+        await archiveData({
+            schoolId: deletedDoc?.schoolId!,
+            category: "homework",
+            originalId: deletedDoc._id,
+            deletedData: deletedDoc.toObject(), // Convert Mongoose doc to plain object
+            deletedBy: req.user!._id || null,
+            reason: null, // Optional reason from body
+        });
 
         return res.status(200).json({
             ok: true,

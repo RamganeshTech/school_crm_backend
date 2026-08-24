@@ -300,7 +300,7 @@ export const deleteClub = async (req: RoleBasedRequest, res: Response) => {
         // 2. CALL THE ARCHIVE UTILITY
         await archiveData({
             schoolId: deletedOne.schoolId,
-            category: "expense",
+            category: "club",
             originalId: deletedOne._id,
             deletedData: deletedOne.toObject(), // Convert Mongoose doc to plain object
             deletedBy: req.user?._id || null,
