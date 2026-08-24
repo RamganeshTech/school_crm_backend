@@ -213,7 +213,7 @@ export const deleteClass = async (req: RoleBasedRequest, res: Response) => {
             originalId: deleted._id,
             deletedData: deleted.toObject(), // Convert Mongoose doc to plain object
             deletedBy: req.user!._id || null,
-            reason: null, // Optional reason from body
+            reason: "class deleted", // Optional reason from body
         });
 
         await createAuditLog(req, {

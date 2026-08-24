@@ -15,6 +15,7 @@ import { createAuditLog } from "../audit_controllers/audit.controllers.js";
 import { archiveData } from "../deleteArchieve_controller/deleteArchieve.controller.js";
 import StudentProfileUpdate from "../../../models/New_Model/StudentModel/studentProfileUpdate_model/studentProfileUpdate.model.js";
 import mongoose, { Types } from "mongoose";
+import ExcelJS from "exceljs";
 
 
 // 🌟 HELPER: Evaluates the completeness of a student's profile
@@ -216,18 +217,6 @@ export const updateStudent = async (req: RoleBasedRequest, res: Response) => {
         // const updates = req.body;
         let updates = { ...req.body };
         const file = req.file;
-
-
-        // // Handle Image Update
-        // if (file) {
-        //     const uploadedUrl = await uploadImageToS3(file);
-        //     updates.studentImage = {
-        //         type: "image",
-        //         url: uploadedUrl,
-        //         originalName: file.originalname,
-        //         uploadedAt: new Date()
-        //     };
-        // }
 
         if (file) {
             const uploadedData = await uploadFileToS3New(file);
@@ -1036,7 +1025,6 @@ export const reviewProfileUpdateRequest = async (req: RoleBasedRequest, res: Res
 
 
 
-import ExcelJS from "exceljs";
 
 // Shared between list + export so filters never drift apart
 function buildStudentFilters(query: any) {

@@ -1162,6 +1162,7 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
                 schoolId, academicYear: currentYear!, transactionType: "CREDIT",
                 amount: payingAmount, date: new Date(), referenceModel: "FeeTransactionModel",
                 referenceId: receipt._id, studentRecordId: studentRecord._id,
+                // studentId: studentId,
                 feeReceiptId: newReceiptEntry._id, category: "Student Fee",
                 section: "student_record", paymentMode: paymentMode.toLowerCase(),
                 description: remarks || `Fee Collection - Receipt #${receiptNo}`,

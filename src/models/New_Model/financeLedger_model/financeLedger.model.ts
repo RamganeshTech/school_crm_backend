@@ -10,6 +10,7 @@ export interface IFinanceLedger extends Document {
     date: Date;
 
     // Polymorphic Link
+    referenceNo: string;
     referenceModel: "ExpenseModel" | "FeeTransactionModel" | "IncomeModel";
     referenceId: Types.ObjectId;
 
@@ -56,9 +57,7 @@ const financeLedgerSchema = new mongoose.Schema<IFinanceLedger>(
             //   index: true,
         },
 
-        amount: {
-            type: Number,
-            required: true,
+        amount: {type: Number,required: true,
             //   min: 0,
         },
 
@@ -66,6 +65,11 @@ const financeLedgerSchema = new mongoose.Schema<IFinanceLedger>(
             type: Date,
             default: new Date(),
             //   index: true, // Crucial for Date Range Reports
+        },
+
+        referenceNo: {
+            type: String,
+            trim: true,
         },
 
         // --- 3. POLYMORPHIC REFERENCE (The Link) ---
@@ -165,5 +169,54 @@ financeLedgerSchema.index({
     academicYear: 1,
 
 });
+
+
+
+// ── PRE-SAVE HOOK: Auto-Generate Number & Immutability Check ───
+financeLedgerSchema.pre('save', async function (next) {
+    const doc = this as any;
+
+    // 1. Prevent modification if already set and doc is being updated
+    if (!doc.isNew) {
+        if (doc.isModified('referenceNo')) {
+            return next(new Error('ImmutableError: referenceNo cannot be modified once set.'));
+        }
+        return next();
+    }
+
+    // 2. If it is a new document and doesn't have a referenceNo yet
+    if (!doc.referenceNo) {
+        const currentYear = new Date(doc.date || Date.now()).getFullYear();
+        const prefix = `FL-${currentYear}-`;
+
+        // Find highest sequence number for this specific school and year
+        const lastEntry = await mongoose.model<IFinanceLedger>('FinanceLedgerModel')
+            .findOne({
+                schoolId: doc.schoolId,
+                referenceNo: { $regex: new RegExp(`^${prefix}`) },
+            })
+            .sort({ referenceNo: -1 })
+            .select('referenceNo')
+            .lean();
+
+        let nextSeq = 1;
+        if (lastEntry?.referenceNo) {
+            const parts = lastEntry.referenceNo.split('-');
+            // const lastSeqNum = parseInt(parts[2], 10);
+            const lastSeqNum = parseInt(parts[2] || '0', 10);
+            
+            if (!isNaN(lastSeqNum)) {
+                nextSeq = lastSeqNum + 1;
+            }
+        }
+
+        // Format: 001, 002 ... 999, 1000, 10000
+        const formattedSeq = nextSeq < 1000 ? String(nextSeq).padStart(3, '0') : String(nextSeq);
+        doc.referenceNo = `${prefix}${formattedSeq}`;
+    }
+
+    next();
+});
+
 
 export const FinanceLedgerModel = mongoose.model("FinanceLedgerModel", financeLedgerSchema);

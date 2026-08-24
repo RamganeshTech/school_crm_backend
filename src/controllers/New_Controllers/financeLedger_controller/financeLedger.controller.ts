@@ -3,14 +3,13 @@ import { FinanceLedgerModel } from "../../../models/New_Model/financeLedger_mode
 import StudentRecordModel from "../../../models/New_Model/StudentModel/StudentRecordModel/studentRecord.model.js";
 import type { RoleBasedRequest } from "../../../utils/types.js";
 import type { Response } from "express";
-import SectionModel from "../../../models/New_Model/SchoolModel/section.model.js";
-import ClassModel from "../../../models/New_Model/SchoolModel/classModel.model.js";
 
 export const createLedgerEntry = async ({
     schoolId,
     academicYear, // e.g., "2024-2025"
     transactionType, // "CREDIT" or "DEBIT"
     amount,
+    // studentId,
     date,
     referenceModel, // "ExpenseModel" or "StudentFeeModel"
     referenceId,    // The _id of the expense/fee
@@ -29,6 +28,7 @@ export const createLedgerEntry = async ({
     date: Date | string,
     referenceModel: string,
     referenceId: string | Types.ObjectId,
+    // studentId: string | Types.ObjectId,
     studentRecordId?: string | Types.ObjectId | null,
     category: string,
     section: string,
@@ -49,6 +49,7 @@ export const createLedgerEntry = async ({
             date: date || new Date(),
             referenceModel,
             referenceId,
+            // studentId,
             section,
             studentRecordId,
             feeReceiptId,
@@ -79,7 +80,75 @@ export const createLedgerEntry = async ({
     }
 };
 
+// ─── HELPER: NORMALIZE REFERENCE DATA ──────────────────────────────────────────
+// This function takes the raw populated ledger document and creates a standard 
+// 'unifiedSourceDetails' object so the frontend always gets consistent properties.
+const normalizeLedgerEntry = (transaction: any) => {
+    if (!transaction) return null;
 
+    const plainTxn = transaction.toObject ? transaction.toObject() : transaction;
+
+    // Create a base structure that the frontend can rely on
+    const unifiedSourceDetails: any = {
+        documentType: plainTxn.referenceModel, // 'ExpenseModel' or 'FeeTransactionModel'
+        documentNumber: null,
+        billNo: null,
+        date: null,
+        amount: null,
+        paymentMode: null,
+        remarks: null,
+        bankDetails: null,
+        attachments: []
+    };
+
+    const ref = plainTxn.referenceId;
+
+    if (ref) {
+        if (transaction.referenceModel === 'ExpenseModel') {
+            unifiedSourceDetails.documentNumber = ref.expenseNo;
+            unifiedSourceDetails.date = ref.date;
+            unifiedSourceDetails.amount = ref.amount;
+            unifiedSourceDetails.paymentMode = ref.paymentMode;
+            unifiedSourceDetails.remarks = ref.remarks;
+
+            // Merge both bill and workPhoto arrays into a single attachments array
+            unifiedSourceDetails.attachments = [
+                ...(ref.bill || []),
+                ...(ref.workPhoto || [])
+            ];
+
+            if (ref.chequeDetails) {
+                unifiedSourceDetails.bankDetails = {
+                    referenceNumber: ref.chequeDetails.chequeNumber,
+                    bankName: ref.chequeDetails.bankName,
+                    date: null // Expense schema doesn't track cheque date separately
+                };
+            }
+        }
+        else if (transaction.referenceModel === 'FeeTransactionModel') {
+            unifiedSourceDetails.documentNumber = ref.receiptNo;
+            unifiedSourceDetails.billNo = ref.billNo;
+            unifiedSourceDetails.date = ref.paymentDate;
+            unifiedSourceDetails.amount = ref.amountPaid;
+            unifiedSourceDetails.paymentMode = ref.paymentMode;
+            unifiedSourceDetails.remarks = ref.remarks;
+            unifiedSourceDetails.attachments = ref.proofUpload || [];
+
+            if (ref.referenceNumber || ref.bankName || ref.chequeDate) {
+                unifiedSourceDetails.bankDetails = {
+                    referenceNumber: ref.referenceNumber,
+                    bankName: ref.bankName,
+                    date: ref.chequeDate
+                };
+            }
+        }
+    }
+
+    return {
+        ...plainTxn,
+        unifiedSourceDetails // 👈 Frontend will use this single, consistent object
+    };
+};
 
 
 export const getAllTransactions = async (req: RoleBasedRequest, res: Response) => {
@@ -91,6 +160,7 @@ export const getAllTransactions = async (req: RoleBasedRequest, res: Response) =
             accountType,     // CASH_IN_HAND or BANK_ACCOUNT
             status,          // active or cancelled
             paymentMode,
+            search,
             section,
             fromDate,
             toDate,
@@ -108,6 +178,9 @@ export const getAllTransactions = async (req: RoleBasedRequest, res: Response) =
         if (academicYear) query.academicYear = academicYear;
         if (transactionType) query.transactionType = transactionType;
         if (accountType) query.accountType = accountType;
+        if (search) {
+            query.referenceNo = { $regex: search as string, $options: 'i' };
+        }
         if (status) query.status = status;
         if (paymentMode) query.paymentMode = paymentMode;
         if (section) query.section = section;
@@ -181,6 +254,158 @@ export const getTransactionById = async (req: RoleBasedRequest, res: Response) =
         if (!transaction) {
             return res.status(404).json({ ok: false, message: "Transaction not found" });
         }
+
+        res.status(200).json({
+            ok: true,
+            data: transaction
+        });
+
+    } catch (error: any) {
+        console.error("Get Transaction By ID Error:", error);
+        res.status(500).json({ ok: false, message: "Failed to fetch transaction", error: error.message });
+    }
+};
+
+
+
+
+export const getAllTransactionsV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const {
+            schoolId,
+            academicYear,
+            transactionType, // CREDIT or DEBIT
+            accountType,     // CASH_IN_HAND or BANK_ACCOUNT
+            status,          // active or cancelled
+            paymentMode,
+            search,
+            section,
+            fromDate,
+            toDate,
+            page = 1,
+            limit = 10
+        } = req.query;
+
+        if (!schoolId) {
+            return res.status(400).json({ ok: false, message: "schoolId is required" });
+        }
+
+        // 1. Build Query
+        const query: any = { schoolId: new mongoose.Types.ObjectId(schoolId) };
+
+        if (academicYear) query.academicYear = academicYear;
+        if (transactionType) query.transactionType = transactionType;
+        if (accountType) query.accountType = accountType;
+        // 👇 NEW: Apply Regex Search for Reference Number
+       
+        if (status) query.status = status;
+        if (paymentMode) query.paymentMode = paymentMode;
+        if (section) query.section = section;
+
+        // Date Range Filter
+        if (fromDate || toDate) {
+            query.date = {};
+            if (fromDate) query.date.$gte = new Date(fromDate);
+            if (toDate) {
+                const endDate = new Date(toDate);
+                endDate.setHours(23, 59, 59, 999);
+                query.date.$lte = endDate;
+            }
+        } 
+        
+        
+        // if (search) {
+        //     query.referenceNo = { $regex: search as string, $options: 'i' };
+        // }
+
+
+
+        // 👇 NEW: Cross-Model Search Logic
+        if (search) {
+            const searchRegex = { $regex: search as string, $options: 'i' };
+
+            // Find matching reference IDs from Fee and Expense models in parallel
+            const [matchingFees, matchingExpenses] = await Promise.all([
+                mongoose.model('FeeTransactionModel').find({ schoolId, receiptNo: searchRegex }).select('_id').lean(),
+                mongoose.model('ExpenseModel').find({ schoolId, expenseNo: searchRegex }).select('_id').lean()
+            ]);
+
+            const matchingRefIds = [
+                ...matchingFees.map(f => f._id),
+                ...matchingExpenses.map(e => e._id)
+            ];
+
+            // Filter by the Ledger's own FL number OR any of the matched linked IDs
+            query.$or = [
+                { referenceNo: searchRegex },
+                { referenceId: { $in: matchingRefIds } }
+            ];
+        }
+        
+        // Optimize Parsing
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const skip = (pageNum - 1) * limitNum;
+
+        // 2. Execute Fetch and Count in Parallel
+        const [rawTransactions, totalDocs] = await Promise.all([
+            FinanceLedgerModel.find(query)
+                .populate("studentRecordId", "studentId className sectionId classId sectionName _id")
+                .populate("referenceId")
+                .populate("createdBy", "userName role _id")
+                .sort({ date: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum)
+                .lean(),
+            FinanceLedgerModel.countDocuments(query)
+        ]);
+
+        const transactions = rawTransactions.map(normalizeLedgerEntry);
+
+        res.status(200).json({
+            ok: true,
+            message: "Transactions fetched successfully",
+            data: transactions,
+            pagination: {
+                total: totalDocs,
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalDocs / limitNum),
+                limit: limitNum
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Get All Finance Error:", error);
+        res.status(500).json({ ok: false, message: "Failed to fetch transactions", error: error.message });
+    }
+};
+
+
+
+
+export const getTransactionByIdV1 = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ ok: false, message: "Invalid Transaction ID" });
+        }
+
+        const rawTransaction = await FinanceLedgerModel.findById(id)
+            .populate("studentRecordId", "studentId className sectionName _id")
+            .populate("referenceId")
+            .populate("feeReceiptId")
+            .populate("createdBy", "userName role _id")
+            .populate("cancelledBy", "userName role _id")
+            .lean();
+
+        if (!rawTransaction) {
+            return res.status(404).json({ ok: false, message: "Transaction not found" });
+        }
+
+
+        // Normalize the single transaction
+        const transaction = normalizeLedgerEntry(rawTransaction);
 
         res.status(200).json({
             ok: true,
@@ -329,7 +554,7 @@ export const getFinanceStats = async (req: RoleBasedRequest, res: Response) => {
         const result = stats[0] || { totalIncome: 0, totalExpense: 0, netBalance: 0, transactionCount: 0 };
 
         res.status(200).json({
-            ok:true,
+            ok: true,
             rangeUsed: range,
             dateStart: start.toDateString(),
             dateEnd: end.toDateString(),
@@ -338,7 +563,7 @@ export const getFinanceStats = async (req: RoleBasedRequest, res: Response) => {
 
     } catch (error: any) {
         console.error("Stats Error:", error);
-        res.status(500).json({ message: "Error fetching finance stats", ok:false });
+        res.status(500).json({ message: "Error fetching finance stats", ok: false });
     }
 };
 
@@ -425,12 +650,12 @@ export const getFinanceTimeline = async (req: RoleBasedRequest, res: Response) =
         res.status(200).json({
             //  dateStart: start.toDateString(),
             // dateEnd: end.toDateString(),
-            ok:true,
+            ok: true,
             data: Object.values(formattedData)
         });
 
     } catch (error: any) {
-        res.status(500).json({ message: "Error fetching timeline",ok:false });
+        res.status(500).json({ message: "Error fetching timeline", ok: false });
     }
 };
 
@@ -466,7 +691,7 @@ export const getFinanceTimelinev1 = async (req: any, res: any) => {
                     start = new Date(startDate);
                     end = new Date(endDate);
                     end.setHours(23, 59, 59, 999); // Include the whole end day
-                    
+
                     // Smart grouping: If custom range is > 90 days, group by month for a cleaner chart
                     const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
                     if (diffDays > 90) format = "%Y-%m";
@@ -587,11 +812,11 @@ export const getOutstandingStats = async (req: RoleBasedRequest, res: Response) 
 
         const result = stats[0] || { totalOutstanding: 0, breakdown: {} };
 
-        res.status(200).json({ data: result, ok:true });
+        res.status(200).json({ data: result, ok: true });
 
     } catch (error: any) {
         console.error("Outstanding Error:", error);
-        res.status(500).json({ message: "Error fetching outstanding fees" , ok:false});
+        res.status(500).json({ message: "Error fetching outstanding fees", ok: false });
     }
 };
 
@@ -672,22 +897,22 @@ export const getRecentFeeActivity = async (req: any, res: any) => {
             transactionType: "CREDIT", // Only show money coming IN
             status: "active"
         })
-        .sort({ date: -1, createdAt: -1 }) // Sort by newest first
-        .limit(10)
-        .populate({
-            path: 'studentRecordId',
-            select: 'studentName className sectionName' // Only grab what we need
-        })
-        .lean();
+            .sort({ date: -1, createdAt: -1 }) // Sort by newest first
+            .limit(10)
+            .populate({
+                path: 'studentRecordId',
+                select: 'studentName className sectionName' // Only grab what we need
+            })
+            .lean();
 
         // Format the data for the frontend
         const formattedActivity = recentActivity.map((tx: any) => {
             // Extract the populated student data safely
             const student = tx.studentRecordId;
-            
+
             // Build a nice display title: "Rahul Kumar" or fallback to Category
-            const displayTitle = student?.studentName 
-                ? student.studentName 
+            const displayTitle = student?.studentName
+                ? student.studentName
                 : (tx.category || "Fee Collection");
 
             // Build a nice description: "Class 10-A • UPI"
@@ -696,7 +921,7 @@ export const getRecentFeeActivity = async (req: any, res: any) => {
                 classInfo = `Class ${student.className}`;
                 if (student.sectionName) classInfo += `-${student.sectionName}`;
             }
-            
+
             const mode = tx.paymentMode || "System";
             const description = classInfo ? `${classInfo} • ${mode}` : mode;
 
@@ -724,9 +949,9 @@ export const getFeeDuesStudentWise = async (req: any, res: Response) => {
         const { schoolId, academicYear, classId, sectionId } = req.query;
 
         if (!schoolId || !academicYear) {
-            return res.status(400).json({ 
-                ok: false, 
-                message: "schoolId and academicYear are required." 
+            return res.status(400).json({
+                ok: false,
+                message: "schoolId and academicYear are required."
             });
         }
 
@@ -819,9 +1044,9 @@ export const getFeeDuesStudentWise = async (req: any, res: Response) => {
 
     } catch (error: any) {
         console.error("Get Student-Wise Fee Dues Error:", error);
-        return res.status(500).json({ 
-            ok: false, 
-            message: "Failed to fetch student-wise fee dues." 
+        return res.status(500).json({
+            ok: false,
+            message: "Failed to fetch student-wise fee dues."
         });
     }
 };
