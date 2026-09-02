@@ -8,6 +8,7 @@ export interface IFeeConfig extends Document {
     feeHead: string
     associatedTerm: string
     isTerm: boolean
+    // modules: string[]
   }[]
   createdAt: Date;
   updatedAt: Date;
@@ -17,7 +18,8 @@ export interface IFeeConfig extends Document {
 const feeHead = new Schema({
   feeHead: { type: String, trim: true },
   associatedTerm: { type: String, default: null },
-  isTerm: { type: Boolean, default: false }
+  isTerm: { type: Boolean, default: false },
+  // modules: {type: [String], default: []}
 }, { _id: true })
 
 const FeeConfigSchema = new Schema<IFeeConfig>({

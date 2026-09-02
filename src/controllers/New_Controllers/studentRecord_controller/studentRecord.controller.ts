@@ -1874,328 +1874,328 @@ export const applyConcession = async (req: RoleBasedRequest, res: Response) => {
 // NEW VERSION
 
 
-// ==========================================
-// APPLY CONCESSION V1
-//
-// Key changes from V0:
-//  - No isBusApplicable — school controls which heads exist via config
-//  - feeHead on FeeStructureModel is now a Map — accessed via .get(head)
-//  - feeStructurev1 / feePaidv1 / duesv1 on StudentRecord are Maps
-//  - Concession waterfall is dynamic over orderedHeads (reversed = latest first)
-//  - Percentage base = sum of ALL heads in master (no bus carve-out)
-//  - paid > 0 guard uses feePaidv1
-// ==========================================
-export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // ==========================================
+    // APPLY CONCESSION V1
+    //
+    // Key changes from V0:
+    //  - No isBusApplicable — school controls which heads exist via config
+    //  - feeHead on FeeStructureModel is now a Map — accessed via .get(head)
+    //  - feeStructurev1 / feePaidv1 / duesv1 on StudentRecord are Maps
+    //  - Concession waterfall is dynamic over orderedHeads (reversed = latest first)
+    //  - Percentage base = sum of ALL heads in master (no bus carve-out)
+    //  - paid > 0 guard uses feePaidv1
+    // ==========================================
+    export const applyConcessionV1 = async (req: RoleBasedRequest, res: Response) => {
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-    try {
-        // ── 1. EXTRACT & CONVERT ─────────────────────────────────────────
-        const {
-            schoolId,
-            studentId,
-            concessionType,  // "amount" | "percentage"
-            remark,
-            studentName,
-            // For first-time record creation
-            classId,
-            sectionId,
-            newOld,
-            busPoint,
-            concessionValue: rawVal,
-            academicYear,
-        } = req.body;
+        try {
+            // ── 1. EXTRACT & CONVERT ─────────────────────────────────────────
+            const {
+                schoolId,
+                studentId,
+                concessionType,  // "amount" | "percentage"
+                remark,
+                studentName,
+                // For first-time record creation
+                classId,
+                sectionId,
+                newOld,
+                busPoint,
+                concessionValue: rawVal,
+                academicYear,
+            } = req.body;
 
-        const concessionValue = Number(rawVal);
-        const file = req.file;
+            const concessionValue = Number(rawVal);
+            const file = req.file;
 
-        // ── 2. BASIC VALIDATION ──────────────────────────────────────────
-        if (!schoolId || !studentId || !concessionType || !concessionValue) {
-            throw new Error("Missing required fields: schoolId, studentId, concessionType, concessionValue");
-        }
-        if (!newOld) {
-            return res.status(400).json({
-                ok: false,
-                message: "newOld is required — must be 'new' or 'old'",
-            });
-        }
+            // ── 2. BASIC VALIDATION ──────────────────────────────────────────
+            if (!schoolId || !studentId || !concessionType || !concessionValue) {
+                throw new Error("Missing required fields: schoolId, studentId, concessionType, concessionValue");
+            }
+            if (!newOld) {
+                return res.status(400).json({
+                    ok: false,
+                    message: "newOld is required — must be 'new' or 'old'",
+                });
+            }
 
-        if (!academicYear) {
-            return res.status(400).json({
-                ok: false,
-                message: "academicYear is required",
-            });
-        }
+            if (!academicYear) {
+                return res.status(400).json({
+                    ok: false,
+                    message: "academicYear is required",
+                });
+            }
 
-        // ── 3. ROLE PROOF CHECK ──────────────────────────────────────────
-        const userRole = req.user!.role.toLowerCase();
-        const isExempt = ["correspondent", "principal"].includes(userRole);
-        if (!isExempt && !file) {
-            throw new Error("Proof document is mandatory for this user role.");
-        }
+            // ── 3. ROLE PROOF CHECK ──────────────────────────────────────────
+            const userRole = req.user!.role.toLowerCase();
+            const isExempt = ["correspondent", "principal"].includes(userRole);
+            if (!isExempt && !file) {
+                throw new Error("Proof document is mandatory for this user role.");
+            }
 
-        // ── 4. FETCH FEE CONFIG (source of truth for head names & order) ─
-        const feeConfig = await FeeStructureConfigModel.findOne({ schoolId }).session(session);
-        if (!feeConfig || !feeConfig.feeHeads || feeConfig.feeHeads.length === 0) {
-            throw new Error(
-                "No FeeStructureConfig found for this school. Please configure fee heads first."
-            );
-        }
-        // const orderedHeads: string[] = feeConfig.feeHeads;
-        const orderedHeads: string[] = feeConfig?.feeHeads?.map((headObj: any) => headObj?.feeHead);
-
-
-        // ── 5. GET ACADEMIC YEAR ─────────────────────────────────────────
-        let currentYear = academicYear
-        if (!academicYear) {
-            const schoolDoc = await SchoolModel.findById(schoolId).session(session);
-            if (!schoolDoc) throw new Error("School not found");
-            currentYear = schoolDoc.currentAcademicYear;
-        }
-
-        // ── 6. FIND EXISTING RECORD ──────────────────────────────────────
-        let studentRecord: any = await StudentRecordModel.findOne({
-            schoolId,
-            studentId,
-            academicYear: currentYear,
-        }).session(session);
-
-        if (!studentRecord) {
-            throw new Error("Student record not found, apply concession once after assigning the student to a class")
-        }
-
-        // if (studentRecord && studentRecord?.isActive === false) {
-        //     throw new Error(
-        //         "Action Denied: This Student Record is INACTIVE. Cannot apply concession."
-        //     );
-        // }
-
-        // ── 7. BLOCK IF ALREADY PAID (feePaidv1) ────────────────────────
-        if (studentRecord) {
-            const totalPaidSoFar: number = orderedHeads.reduce((sum, head) => {
-                return sum + Number(
-                    studentRecord.feePaidv1.get?.(head) ?? studentRecord.feePaidv1[head] ?? 0
-                );
-            }, 0);
-
-            if (totalPaidSoFar > 0) {
+            // ── 4. FETCH FEE CONFIG (source of truth for head names & order) ─
+            const feeConfig = await FeeStructureConfigModel.findOne({ schoolId }).session(session);
+            if (!feeConfig || !feeConfig.feeHeads || feeConfig.feeHeads.length === 0) {
                 throw new Error(
-                    `ACTION DENIED: This student has already paid ₹${totalPaidSoFar}. ` +
-                    `Concessions can only be applied BEFORE any fee collection starts.`
+                    "No FeeStructureConfig found for this school. Please configure fee heads first."
                 );
             }
-        }
+            // const orderedHeads: string[] = feeConfig.feeHeads;
+            const orderedHeads: string[] = feeConfig?.feeHeads?.map((headObj: any) => headObj?.feeHead);
 
-        // ── 8. RESOLVE CLASS / SECTION CONTEXT ──────────────────────────
-        let targetClassId: any, targetSectionId: any, targetNewOld: any;
-        let targetClassName: string | undefined, targetSectionName: string | undefined;
 
-        if (studentRecord) {
-            // Updating existing record
-            targetClassId = studentRecord.classId;
-            targetSectionId = studentRecord.sectionId || null;
-            targetNewOld = studentRecord.newOld;
-        } else {
-            // Creating new record — classId & newOld required
-            if (!classId || !newOld) {
-                throw new Error("Record doesn't exist. Provide classId and newOld to create one.");
+            // ── 5. GET ACADEMIC YEAR ─────────────────────────────────────────
+            let currentYear = academicYear
+            if (!academicYear) {
+                const schoolDoc = await SchoolModel.findById(schoolId).session(session);
+                if (!schoolDoc) throw new Error("School not found");
+                currentYear = schoolDoc.currentAcademicYear;
             }
-            targetClassId = classId;
-            targetSectionId = sectionId || null;
-            targetNewOld = newOld;
 
-            const cDoc: any = await ClassModel.findById(classId).session(session);
-            targetClassName = cDoc.name;
-            targetSectionName = "N/A";
-            if (targetSectionId) {
-                const sDoc: any = await SectionModel.findById(targetSectionId).session(session);
-                targetSectionName = sDoc.name;
-            }
-        }
-
-        // ── 9. FETCH MASTER FEE STRUCTURE ────────────────────────────────
-        const masterFee = await FeeStructureModel.findOne({
-            schoolId,
-            classId: targetClassId,
-            type: targetNewOld,
-        }).session(session);
-
-        if (!masterFee) {
-            throw new Error(
-                "Master Fee Structure not found. Please define the fee structure for the selected class."
-            );
-        }
-
-        // masterFee.feeHead is a Map<string, number> (V1 model)
-        const masterFeeMap = masterFee.feeHeads;
-
-        // ── 10. BUILD BASE FEE STRUCTURE FROM MASTER ────────────────────
-        // All heads from config, amounts from master map (0 if head not in master)
-        const baseFeeStructure: Map<string, number> = new Map<string, number>();
-        let totalBaseFee = 0;
-
-        for (const head of orderedHeads) {
-            const amt = Number(masterFeeMap.get?.(head) ?? (masterFeeMap as any)[head] ?? 0);
-            baseFeeStructure.set(head, amt);
-            totalBaseFee += amt;
-        }
-
-        // ── 11. CALCULATE DISCOUNT AMOUNT ────────────────────────────────
-        let discountAmount = 0;
-        let inAmount = 0;
-
-
-        if (concessionType?.toLowerCase()?.trim() === "amount") {
-            discountAmount = concessionValue;
-            inAmount = concessionValue;
-        } else if (concessionType?.toLowerCase()?.trim() === "percentage") {
-            // Base = sum of ALL heads in master (no carve-outs — school controls heads via config)
-            discountAmount = (totalBaseFee * concessionValue) / 100;
-            inAmount = discountAmount;
-        } else {
-            throw new Error("concessionType must be 'amount' or 'percentage'");
-        }
-
-        if (discountAmount > totalBaseFee) {
-            throw new Error(
-                `Concession amount (₹${discountAmount}) exceeds total fee (₹${totalBaseFee}).`
-            );
-        }
-
-        // // ── 12. APPLY WATERFALL REDUCTION ────────────────────────────────
-        // // Reversed = latest head first (e.g., Term 2 before Term 1 before Admission)
-        // // This mirrors old V0 behavior: secondTerm → firstTerm → admission
-        // const reducedFeeStructure = new Map<string, number>(baseFeeStructure);
-        // let remaining = discountAmount;
-
-        // const reversedHeads = [...orderedHeads].reverse();
-
-        // for (const head of reversedHeads) {
-        //     if (remaining <= 0) break;
-
-        //     const currentAmt = reducedFeeStructure.get(head) ?? 0;
-        //     if (currentAmt <= 0) continue;
-
-        //     if (currentAmt >= remaining) {
-        //         reducedFeeStructure.set(head, currentAmt - remaining);
-        //         remaining = 0;
-        //     } else {
-        //         remaining -= currentAmt;
-        //         reducedFeeStructure.set(head, 0);
-        //     }
-        // }
-
-        // // ── 13. BUILD INITIAL DUES (all = structure since paid = 0) ──────
-        // const initialDues = new Map<string, number>();
-        // for (const head of orderedHeads) {
-        //     initialDues.set(head, reducedFeeStructure.get(head) ?? 0);
-        // }
-
-        // const initialFeePaid = new Map<string, number>();
-        // for (const head of orderedHeads) {
-        //     initialFeePaid.set(head, 0);
-        // }
-
-        // ── 14. UPLOAD PROOF ─────────────────────────────────────────────
-        let proofObj: any | null = null;
-        if (file) {
-            const uploadResult = await uploadFileToS3New(file);
-            proofObj = {
-                type: file.mimetype.startsWith("image") ? "image" : "pdf",
-                key: uploadResult.key,
-                url: uploadResult.url,
-                originalName: file.originalname,
-                uploadedAt: new Date(),
-            };
-        } else if (studentRecord && studentRecord.concession?.proof) {
-            proofObj = studentRecord.concession.proof;
-        }
-
-        const concessionPayload = {
-            isApplied: true,
-            type: concessionType,
-            value: concessionValue,
-            inAmount,
-            remark,
-            proof: proofObj || null,
-            approvedBy: null,
-        };
-
-        // ── 15. SAVE ─────────────────────────────────────────────────────
-        if (studentRecord) {
-            // Update existing — overwrite v1 maps
-            // studentRecord.feeStructurev1 = reducedFeeStructure;
-            // studentRecord.feePaidv1      = initialFeePaid;   // reset to 0 (paid guard above confirms it is already 0)
-            // studentRecord.duesv1         = initialDues;
-            studentRecord.isFullyPaid = false;
-            studentRecord.isActive = false;
-            studentRecord.concession = concessionPayload;
-
-            await studentRecord.save({ session });
-        } else {
-            // Create new record
-            studentRecord = new StudentRecordModel({
+            // ── 6. FIND EXISTING RECORD ──────────────────────────────────────
+            let studentRecord: any = await StudentRecordModel.findOne({
                 schoolId,
                 studentId,
                 academicYear: currentYear,
+            }).session(session);
+
+            if (!studentRecord) {
+                throw new Error("Student record not found, apply concession once after assigning the student to a class")
+            }
+
+            // if (studentRecord && studentRecord?.isActive === false) {
+            //     throw new Error(
+            //         "Action Denied: This Student Record is INACTIVE. Cannot apply concession."
+            //     );
+            // }
+
+            // ── 7. BLOCK IF ALREADY PAID (feePaidv1) ────────────────────────
+            if (studentRecord) {
+                const totalPaidSoFar: number = orderedHeads.reduce((sum, head) => {
+                    return sum + Number(
+                        studentRecord.feePaidv1.get?.(head) ?? studentRecord.feePaidv1[head] ?? 0
+                    );
+                }, 0);
+
+                if (totalPaidSoFar > 0) {
+                    throw new Error(
+                        `ACTION DENIED: This student has already paid ₹${totalPaidSoFar}. ` +
+                        `Concessions can only be applied BEFORE any fee collection starts.`
+                    );
+                }
+            }
+
+            // ── 8. RESOLVE CLASS / SECTION CONTEXT ──────────────────────────
+            let targetClassId: any, targetSectionId: any, targetNewOld: any;
+            let targetClassName: string | undefined, targetSectionName: string | undefined;
+
+            if (studentRecord) {
+                // Updating existing record
+                targetClassId = studentRecord.classId;
+                targetSectionId = studentRecord.sectionId || null;
+                targetNewOld = studentRecord.newOld;
+            } else {
+                // Creating new record — classId & newOld required
+                if (!classId || !newOld) {
+                    throw new Error("Record doesn't exist. Provide classId and newOld to create one.");
+                }
+                targetClassId = classId;
+                targetSectionId = sectionId || null;
+                targetNewOld = newOld;
+
+                const cDoc: any = await ClassModel.findById(classId).session(session);
+                targetClassName = cDoc.name;
+                targetSectionName = "N/A";
+                if (targetSectionId) {
+                    const sDoc: any = await SectionModel.findById(targetSectionId).session(session);
+                    targetSectionName = sDoc.name;
+                }
+            }
+
+            // ── 9. FETCH MASTER FEE STRUCTURE ────────────────────────────────
+            const masterFee = await FeeStructureModel.findOne({
+                schoolId,
                 classId: targetClassId,
-                sectionId: targetSectionId,
-                className: targetClassName,
-                sectionName: targetSectionName,
-                studentName: studentName || null,
-                newOld: targetNewOld,
-                isActive: false,
-                isFullyPaid: false,
-                busPoint: busPoint || null,
+                type: targetNewOld,
+            }).session(session);
 
-                // feeStructurev1: reducedFeeStructure,
-                // feePaidv1:      initialFeePaid,
-                // duesv1:         initialDues,
+            if (!masterFee) {
+                throw new Error(
+                    "Master Fee Structure not found. Please define the fee structure for the selected class."
+                );
+            }
 
-                concession: concessionPayload,
+            // masterFee.feeHead is a Map<string, number> (V1 model)
+            const masterFeeMap = masterFee.feeHeads;
+
+            // ── 10. BUILD BASE FEE STRUCTURE FROM MASTER ────────────────────
+            // All heads from config, amounts from master map (0 if head not in master)
+            const baseFeeStructure: Map<string, number> = new Map<string, number>();
+            let totalBaseFee = 0;
+
+            for (const head of orderedHeads) {
+                const amt = Number(masterFeeMap.get?.(head) ?? (masterFeeMap as any)[head] ?? 0);
+                baseFeeStructure.set(head, amt);
+                totalBaseFee += amt;
+            }
+
+            // ── 11. CALCULATE DISCOUNT AMOUNT ────────────────────────────────
+            let discountAmount = 0;
+            let inAmount = 0;
+
+
+            if (concessionType?.toLowerCase()?.trim() === "amount") {
+                discountAmount = concessionValue;
+                inAmount = concessionValue;
+            } else if (concessionType?.toLowerCase()?.trim() === "percentage") {
+                // Base = sum of ALL heads in master (no carve-outs — school controls heads via config)
+                discountAmount = (totalBaseFee * concessionValue) / 100;
+                inAmount = discountAmount;
+            } else {
+                throw new Error("concessionType must be 'amount' or 'percentage'");
+            }
+
+            if (discountAmount > totalBaseFee) {
+                throw new Error(
+                    `Concession amount (₹${discountAmount}) exceeds total fee (₹${totalBaseFee}).`
+                );
+            }
+
+            // // ── 12. APPLY WATERFALL REDUCTION ────────────────────────────────
+            // // Reversed = latest head first (e.g., Term 2 before Term 1 before Admission)
+            // // This mirrors old V0 behavior: secondTerm → firstTerm → admission
+            // const reducedFeeStructure = new Map<string, number>(baseFeeStructure);
+            // let remaining = discountAmount;
+
+            // const reversedHeads = [...orderedHeads].reverse();
+
+            // for (const head of reversedHeads) {
+            //     if (remaining <= 0) break;
+
+            //     const currentAmt = reducedFeeStructure.get(head) ?? 0;
+            //     if (currentAmt <= 0) continue;
+
+            //     if (currentAmt >= remaining) {
+            //         reducedFeeStructure.set(head, currentAmt - remaining);
+            //         remaining = 0;
+            //     } else {
+            //         remaining -= currentAmt;
+            //         reducedFeeStructure.set(head, 0);
+            //     }
+            // }
+
+            // // ── 13. BUILD INITIAL DUES (all = structure since paid = 0) ──────
+            // const initialDues = new Map<string, number>();
+            // for (const head of orderedHeads) {
+            //     initialDues.set(head, reducedFeeStructure.get(head) ?? 0);
+            // }
+
+            // const initialFeePaid = new Map<string, number>();
+            // for (const head of orderedHeads) {
+            //     initialFeePaid.set(head, 0);
+            // }
+
+            // ── 14. UPLOAD PROOF ─────────────────────────────────────────────
+            let proofObj: any | null = null;
+            if (file) {
+                const uploadResult = await uploadFileToS3New(file);
+                proofObj = {
+                    type: file.mimetype.startsWith("image") ? "image" : "pdf",
+                    key: uploadResult.key,
+                    url: uploadResult.url,
+                    originalName: file.originalname,
+                    uploadedAt: new Date(),
+                };
+            } else if (studentRecord && studentRecord.concession?.proof) {
+                proofObj = studentRecord.concession.proof;
+            }
+
+            const concessionPayload = {
+                isApplied: true,
+                type: concessionType,
+                value: concessionValue,
+                inAmount,
+                remark,
+                proof: proofObj || null,
+                approvedBy: null,
+            };
+
+            // ── 15. SAVE ─────────────────────────────────────────────────────
+            if (studentRecord) {
+                // Update existing — overwrite v1 maps
+                // studentRecord.feeStructurev1 = reducedFeeStructure;
+                // studentRecord.feePaidv1      = initialFeePaid;   // reset to 0 (paid guard above confirms it is already 0)
+                // studentRecord.duesv1         = initialDues;
+                studentRecord.isFullyPaid = false;
+                studentRecord.isActive = false;
+                studentRecord.concession = concessionPayload;
+
+                await studentRecord.save({ session });
+            } else {
+                // Create new record
+                studentRecord = new StudentRecordModel({
+                    schoolId,
+                    studentId,
+                    academicYear: currentYear,
+                    classId: targetClassId,
+                    sectionId: targetSectionId,
+                    className: targetClassName,
+                    sectionName: targetSectionName,
+                    studentName: studentName || null,
+                    newOld: targetNewOld,
+                    isActive: false,
+                    isFullyPaid: false,
+                    busPoint: busPoint || null,
+
+                    // feeStructurev1: reducedFeeStructure,
+                    // feePaidv1:      initialFeePaid,
+                    // duesv1:         initialDues,
+
+                    concession: concessionPayload,
+                });
+
+                await studentRecord.save({ session });
+            }
+
+            // Update student's current class/section
+            await StudentNewModel.findByIdAndUpdate(
+                studentId,
+                {
+                    $set: {
+                        currentClassId: targetClassId,
+                        currentSectionId: targetSectionId,
+                        isActive: true,
+                    },
+                },
+                { session }
+            );
+
+            // ── 16. AUDIT ────────────────────────────────────────────────────
+            await createAuditLog(req, {
+                action: "edit",
+                module: "student_record",
+                targetId: studentRecord._id,
+                description: `Concession applied for student record (${studentRecord._id})`,
+                status: "success",
             });
 
-            await studentRecord.save({ session });
+            await session.commitTransaction();
+            session.endSession();
+
+            return res.status(200).json({
+                ok: true,
+                message: "Concession applied successfully",
+                data: studentRecord,
+            });
+        } catch (error: any) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Concession V1 Error:", error);
+            return res.status(500).json({ ok: false, message: error.message });
         }
-
-        // Update student's current class/section
-        await StudentNewModel.findByIdAndUpdate(
-            studentId,
-            {
-                $set: {
-                    currentClassId: targetClassId,
-                    currentSectionId: targetSectionId,
-                    isActive: true,
-                },
-            },
-            { session }
-        );
-
-        // ── 16. AUDIT ────────────────────────────────────────────────────
-        await createAuditLog(req, {
-            action: "edit",
-            module: "student_record",
-            targetId: studentRecord._id,
-            description: `Concession applied for student record (${studentRecord._id})`,
-            status: "success",
-        });
-
-        await session.commitTransaction();
-        session.endSession();
-
-        return res.status(200).json({
-            ok: true,
-            message: "Concession applied successfully",
-            data: studentRecord,
-        });
-    } catch (error: any) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error("Concession V1 Error:", error);
-        return res.status(500).json({ ok: false, message: error.message });
-    }
-};
-// END OF NEW VERSION
+    };
+    // END OF NEW VERSION
 
 export const updateConcessionDetails = async (req: RoleBasedRequest, res: Response) => {
     const session = await mongoose.startSession();
@@ -3571,171 +3571,6 @@ function buildStudentRecordFilters(query: any) {
 
     return { initialMatch, postLookupMatch };
 }
-
-// export const exportStudentRecordsV1 = async (req: RoleBasedRequest, res: Response) => {
-//     try {
-//         const { schoolId, academicYear } = req.query;
-//         if (!schoolId) return res.status(400).json({ ok: false, message: "schoolId is required" });
-//         if (!academicYear) return res.status(400).json({ ok: false, message: "academicYear is required" });
-
-//          // ==========================================
-//         // STEP 1: Get feeHeads for this school (defines the v1 Map keys)
-//         // ==========================================
-//         const feeConfig = await FeeStructureConfigModel.findOne({ schoolId }).lean();
-//         const feeHeads = feeConfig?.feeHeads?.map((fh: any) => fh.feeHead) ?? [];
-
-
-//         const { initialMatch, postLookupMatch } = buildStudentRecordFilters(req.query);
-
-//         const pipeline: mongoose.PipelineStage[] = [
-//             { $match: initialMatch },
-//             {
-//                 $lookup: {
-//                     from: "studentrecords",
-//                     let: { student_id: "$_id" },
-//                     pipeline: [
-//                         {
-//                             $match: {
-//                                 $expr: {
-//                                     $and: [
-//                                         { $eq: ["$studentId", "$$student_id"] },
-//                                         { $eq: ["$academicYear", academicYear] }
-//                                     ]
-//                                 }
-//                             }
-//                         }
-//                     ],
-//                     as: "recordData"
-//                 }
-//             },
-//             { $unwind: { path: "$recordData", preserveNullAndEmptyArrays: true } },
-//         ];
-
-//         if (Object.keys(postLookupMatch).length > 0) pipeline.push({ $match: postLookupMatch });
-
-//         // Export only makes sense for students that actually HAVE a record this year
-//         pipeline.push({ $match: { "recordData._id": { $exists: true } } });
-//         pipeline.push({ $sort: { studentName: 1 } });
-
-//         pipeline.push({
-//             $project: {
-//                 _id: 0,
-//                 recordId: "$recordData._id",
-//                 schoolId: "$recordData.schoolId",
-//                 studentId: "$recordData.studentId",
-//                 studentName: "$recordData.studentName",
-//                 srId: "$srId",
-//                 academicYear: "$recordData.academicYear",
-//                 classId: "$recordData.classId",
-//                 sectionId: "$recordData.sectionId",
-//                 className: "$recordData.className",
-//                 sectionName: "$recordData.sectionName",
-//                 newOld: "$recordData.newOld",
-//                 rollNumber: "$recordData.rollNumber",
-//                 feeStructure: "$recordData.feeStructure",
-//                 feeStructurev1: "$recordData.feeStructurev1",
-//                 feePaid: "$recordData.feePaid",
-//                 feePaidv1: "$recordData.feePaidv1",
-//                 concession: "$recordData.concession",
-//                 dues: "$recordData.dues",
-//                 duesv1: "$recordData.duesv1",
-//                 isActive: "$recordData.isActive",
-//                 isBusApplicable: "$recordData.isBusApplicable",
-//                 isFullyPaid: "$recordData.isFullyPaid",
-//                 busPoint: "$recordData.busPoint",
-//                 feeStatus: "$recordData.feeStatus",
-//                 createdAt: "$recordData.createdAt",
-//                 updatedAt: "$recordData.updatedAt"
-//             }
-//         });
-
-//         const records = await StudentNewModel.aggregate(pipeline);
-
-//         if (!records.length) {
-//             return res.status(404).json({ ok: false, message: "No records found for the given filters" });
-//         }
-
-//         const workbook = new ExcelJS.Workbook();
-//         const sheet = workbook.addWorksheet("StudentRecords");
-
-//         sheet.columns = [
-//             { header: "recordId", key: "recordId", width: 26 },
-//             { header: "schoolId", key: "schoolId", width: 26 },
-//             { header: "studentId", key: "studentId", width: 26 },
-//             { header: "studentName", key: "studentName", width: 22 },
-//             { header: "srId", key: "srId", width: 15 },
-//             { header: "academicYear", key: "academicYear", width: 14 },
-//             { header: "classId", key: "classId", width: 26 },
-//             { header: "sectionId", key: "sectionId", width: 26 },
-//             { header: "className", key: "className", width: 12 },
-//             { header: "sectionName", key: "sectionName", width: 12 },
-//             { header: "newOld", key: "newOld", width: 10 },
-//             { header: "rollNumber", key: "rollNumber", width: 12 },
-//             { header: "feeStructure", key: "feeStructure", width: 40 },
-//             { header: "feeStructurev1", key: "feeStructurev1", width: 40 },
-//             { header: "feePaid", key: "feePaid", width: 40 },
-//             { header: "feePaidv1", key: "feePaidv1", width: 40 },
-//             { header: "concession", key: "concession", width: 40 },
-//             { header: "dues", key: "dues", width: 40 },
-//             { header: "duesv1", key: "duesv1", width: 40 },
-//             { header: "isActive", key: "isActive", width: 10 },
-//             { header: "isBusApplicable", key: "isBusApplicable", width: 14 },
-//             { header: "isFullyPaid", key: "isFullyPaid", width: 12 },
-//             { header: "busPoint", key: "busPoint", width: 26 },
-//             { header: "feeStatus", key: "feeStatus", width: 12 },
-//             { header: "createdAt", key: "createdAt", width: 22 },
-//             { header: "updatedAt", key: "updatedAt", width: 22 },
-//         ];
-//         sheet.getRow(1).font = { bold: true };
-
-//         // Aggregation output turns Mongoose Map fields into plain objects already,
-//         // but guard for the Map instance case too (defensive)
-//         const mapToObj = (m: any) => (m instanceof Map ? Object.fromEntries(m) : (m ?? {}));
-
-//         for (const r of records) {
-//             sheet.addRow({
-//                 recordId: r.recordId?.toString() ?? "",
-//                 schoolId: r.schoolId?.toString() ?? "",
-//                 studentId: r.studentId?.toString() ?? "",
-//                 studentName: r.studentName ?? "",
-//                 srId: r.srId ?? "",
-//                 academicYear: r.academicYear ?? "",
-//                 classId: r.classId?.toString() ?? "",
-//                 sectionId: r.sectionId?.toString() ?? "",
-//                 className: r.className ?? "",
-//                 sectionName: r.sectionName ?? "",
-//                 newOld: r.newOld ?? "",
-//                 rollNumber: r.rollNumber ?? "",
-//                 feeStructure: JSON.stringify(r.feeStructure ?? {}),
-//                 feeStructurev1: JSON.stringify(mapToObj(r.feeStructurev1)),
-//                 feePaid: JSON.stringify(r.feePaid ?? {}),
-//                 feePaidv1: JSON.stringify(mapToObj(r.feePaidv1)),
-//                 concession: JSON.stringify(r.concession ?? {}),
-//                 dues: JSON.stringify(r.dues ?? {}),
-//                 duesv1: JSON.stringify(mapToObj(r.duesv1)),
-//                 isActive: r.isActive ?? false,
-//                 isBusApplicable: r.isBusApplicable ?? false,
-//                 isFullyPaid: r.isFullyPaid ?? false,
-//                 busPoint: r.busPoint?.toString() ?? "",
-//                 feeStatus: r.feeStatus ?? "unpaid",
-//                 createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : "",
-//                 updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : "",
-//             });
-//         }
-
-//         const fileName = `student_records_${academicYear}_${Date.now()}.xlsx`;
-//         res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-//         res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-
-//         await workbook.xlsx.write(res);
-//         res.end();
-
-//     } catch (error: any) {
-//         console.error("Export Student Records Error:", error);
-//         res.status(500).json({ ok: false, message: error.message });
-//     }
-// };
-
 
 
 export const exportStudentRecordsV1 = async (req: RoleBasedRequest, res: Response) => {
