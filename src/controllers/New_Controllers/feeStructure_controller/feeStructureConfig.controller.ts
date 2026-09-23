@@ -1,5 +1,6 @@
 import { type Response } from 'express';
 import FeeStructureConfigModel from '../../../models/New_Model/FeeStructureModel/feeStructureConfig.model.js';
+import { ALLOWED_MODULE_VALUES } from '../../../constants/constant.js';
 
 // =========================================================
 // 1. UPSERT (CREATE OR UPDATE) FEE CONFIGURATION
@@ -7,7 +8,7 @@ import FeeStructureConfigModel from '../../../models/New_Model/FeeStructureModel
 export const upsertFeeConfig = async (req: any, res: Response) => {
     try {
         const schoolId = req.params?.schoolId;
-        const { feeHeads, isActive } = req.body;   
+        const { feeHeads, isActive } = req.body;
 
         if (!schoolId) {
             return res.status(400).json({ ok: false, message: "School ID is required" });
@@ -43,7 +44,7 @@ export const upsertFeeConfig = async (req: any, res: Response) => {
 export const upsertFeeConfigV1 = async (req: any, res: Response) => {
     try {
         const schoolId = req.params?.schoolId;
-        const { feeHeads, isActive } = req.body;   
+        const { feeHeads, isActive } = req.body;
 
         if (!schoolId) {
             return res.status(400).json({ ok: false, message: "School ID is required" });
@@ -51,7 +52,7 @@ export const upsertFeeConfigV1 = async (req: any, res: Response) => {
 
         // --- 🌟 STRICT VALIDATION LOGIC ---
         let validatedFeeHeads = [];
-        
+
         if (feeHeads && Array.isArray(feeHeads)) {
             const allowedTerms = ["firstTerm", "secondTerm", "thirdTerm"];
             const seenCombinations = new Set<string>();
@@ -59,9 +60,9 @@ export const upsertFeeConfigV1 = async (req: any, res: Response) => {
             for (const item of feeHeads) {
                 // 1. Check if feeHead name exists
                 if (!item.feeHead || typeof item.feeHead !== 'string' || item.feeHead.trim() === '') {
-                    return res.status(400).json({ 
-                        ok: false, 
-                        message: "A valid feeHead name is required for all entries." 
+                    return res.status(400).json({
+                        ok: false,
+                        message: "A valid feeHead name is required for all entries."
                     });
                 }
 
@@ -92,25 +93,46 @@ export const upsertFeeConfigV1 = async (req: any, res: Response) => {
                 }
                 seenCombinations.add(combinationKey);
 
+
+                // 4. Modules Validation — sanitize into a clean, deduped string array.
+                // No fixed enum: module names are school-configurable free text,
+                // matching the offline app's behavior exactly.
+                let sanitizedModules: string[] = [];
+                if (Array.isArray(item.modules)) {
+                    const cleanedList = item.modules
+                        .filter((m: any) => typeof m === 'string')
+                        .map((m: string) => m.trim())
+                        .filter((m: string) => m !== '');
+
+                    const invalidModule = cleanedList.find((m: string) => !ALLOWED_MODULE_VALUES.has(m));
+
+                    if (invalidModule) {
+                        throw new Error(`Invalid module detected: "${invalidModule}". Allowed modules are: ${Array.from(ALLOWED_MODULE_VALUES).join(', ')}`);
+                    }
+
+                    sanitizedModules = Array.from(new Set(cleanedList));
+                }
+
                 // Push sanitized data
                 validatedFeeHeads.push({
                     feeHead: cleanedFeeHead,
                     associatedTerm: finalAssociatedTerm,
-                    isTerm: item.isTerm === true
+                    isTerm: item.isTerm === true,
+                    modules: sanitizedModules
                 });
             }
         }
 
         // Perform Upsert strictly based on schoolId with sanitized data
         const updatedConfig = await FeeStructureConfigModel.findOneAndUpdate(
-            { schoolId }, 
+            { schoolId },
             {
                 $set: {
                     feeHeads: validatedFeeHeads,
                     isActive: isActive !== undefined ? isActive : true
                 }
-            }, 
-            { new: true, upsert: true, runValidators: true } 
+            },
+            { new: true, upsert: true, runValidators: true }
         );
 
         return res.status(200).json({
@@ -121,10 +143,10 @@ export const upsertFeeConfigV1 = async (req: any, res: Response) => {
 
     } catch (error: any) {
         console.error("Upsert Fee Config Error:", error);
-        return res.status(500).json({ 
-            ok: false, 
-            message: "Internal server error", 
-            error: error.message 
+        return res.status(500).json({
+            ok: false,
+            message: "Internal server error",
+            error: error.message
         });
     }
 };
@@ -137,7 +159,7 @@ export const upsertFeeConfigV1 = async (req: any, res: Response) => {
 // =========================================================
 export const getFeeConfig = async (req: any, res: Response) => {
     try {
-        const {schoolId} = req.params;
+        const { schoolId } = req.params;
 
         if (!schoolId) {
             return res.status(400).json({ ok: false, message: "School ID is required" });
@@ -146,10 +168,10 @@ export const getFeeConfig = async (req: any, res: Response) => {
         const feeConfig = await FeeStructureConfigModel.findOne({ schoolId });
 
         if (!feeConfig) {
-            return res.status(404).json({ 
-                ok: false, 
+            return res.status(404).json({
+                ok: false,
                 message: "No fee configuration found for this school",
-                data: null 
+                data: null
             });
         }
 

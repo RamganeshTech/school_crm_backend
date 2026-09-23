@@ -69,9 +69,20 @@ import premisesRoutes from './routes/New_Routes/eb_routes/premises.routes.js';
 import ebLogsRoutes from './routes/New_Routes/eb_routes/ebLog.routes.js';
 import tariffRoutes from './routes/New_Routes/eb_routes/tariff.routes.js';
 import notficationRoutes from './routes/New_Routes/notfication_routes/notfication.routes.js';
+import schoolPubllicKeyRoutes from './routes/New_Routes/school_routes/schoolPublicKey.routes.js';
+import path from 'path';
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+
 
 
 dotenv.config({ path: '.env.production' });
+
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+
 const app = express()
 const server = http.createServer(app);
 
@@ -81,6 +92,9 @@ app.use(cors({
     origin: process.env.FRONTEND_URL,
     credentials: true
 }))
+
+
+
 
 app.use(cookieParser())
 app.use(express.json())
@@ -105,6 +119,7 @@ app.use('/api/studentrecord', studentRecordRoutes)
 app.use('/api/attendance', attendanceRoutes)
 app.use('/api/fee/receipt', feeReceiptRoutes)
 app.use('/api/global-search', globalSearchRoutes)
+app.use('/api/school-key', schoolPubllicKeyRoutes)
 
 app.use('/api/school-config/bill-book', schoolBillBookRoutes)
 app.use('/api/school-config/bill-record', billBookRecordRoutes)
@@ -151,6 +166,25 @@ app.use('/api/notifications', notficationRoutes)
 
 
 app.use('/api/download', downloadRoutes)
+
+
+console.log('Resolved downloads path:', path.join(__dirname, 'public/downloads'))
+
+// app.use('/api/app/downloads', express.static(path.join(__dirname, 'public/downloads')))
+app.use('/api/app/downloads', express.static(path.join(__dirname, '..', 'public/downloads')))
+
+app.get('/api/downloads/latest', (req, res) => {
+    const baseUrl = `${req.protocol}://${req.get('host')}`
+    res.json({
+        ok: true,
+        message: 'Latest release fetched successfully',
+        data: {
+            version: '1.0.0',
+            windowsUrl: `${baseUrl}/api/app/downloads/daily-grades-offline-1.0.0-setup.exe`,
+            releasedAt: '2026-09-08'
+        }
+    })
+})
 
 // app.use("/api/feereceipt")
 

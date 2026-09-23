@@ -63,6 +63,12 @@ export interface IStudentRecord extends Document {
     busPoint?: Types.ObjectId | null;
 
     feeStatus: "paid" | "unpaid"
+
+    unlockedModules: string[];
+    lastActivationCode?: string | null;
+    lastActivationCodeGeneratedAt?: Date | null;
+    lastActivationCodeGeneratedBy?: Types.ObjectId | null;
+
     createdAt: Date;
     updatedAt: Date;
 }
@@ -171,6 +177,25 @@ const StudentRecordSchema = new mongoose.Schema<IStudentRecord>({
     },
 
     feeStatus: { type: String, default: "unpaid" },
+
+    // === OFFLINE ACTIVATION FIELDS ===
+    unlockedModules: { 
+        type: [String], 
+        default: [] 
+    },
+    lastActivationCode: { 
+        type: String, 
+        default: null 
+    },
+    lastActivationCodeGeneratedAt: { 
+        type: Date, 
+        default: null 
+    },
+    lastActivationCodeGeneratedBy: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "UserModel", // Assuming your user model is named this
+        default: null 
+    },
 
 }, { timestamps: true });
 

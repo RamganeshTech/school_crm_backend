@@ -41,6 +41,14 @@ const studentFeeColumns = [
 export default studentFeeColumns;
 
 
+export const ALLOWED_MODULE_VALUES = new Set([
+  'marks',
+  'homework',
+  'club',
+  'announcement',
+  'attendance',
+  'timetable'
+]);
 
 
 export const REDIS_KEYS = {
@@ -84,3 +92,6 @@ export const REDIS_KEYS = {
   schoolEBKpis: (schoolId: string, dateStamp: string) => `school:${schoolId}:eb:kpis:${dateStamp}`,
 
 };
+
+
+

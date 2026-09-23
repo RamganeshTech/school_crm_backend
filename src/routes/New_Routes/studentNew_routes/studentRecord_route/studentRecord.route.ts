@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  activateFromUnlockCodeV1,
   applyConcession, applyConcessionV1, approveStudentRecordConcession, collectFeeAndManageRecord, collectFeeAndManageRecordV1, deleteStudentRecord,
   exportStudentRecordsV1,
   getAllStudentRecords,
@@ -242,6 +243,14 @@ studentRecordRoutes.get(
   "/v1/export",
   multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"),
   exportStudentRecordsV1
+);
+
+
+
+studentRecordRoutes.post(
+  "/v1/activate-modules",
+  multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"),
+  activateFromUnlockCodeV1
 );
 
 
