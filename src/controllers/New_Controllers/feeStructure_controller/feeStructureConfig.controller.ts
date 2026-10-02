@@ -104,7 +104,8 @@ export const upsertFeeConfigV1 = async (req: any, res: Response) => {
                         .map((m: string) => m.trim())
                         .filter((m: string) => m !== '');
 
-                    const invalidModule = cleanedList.find((m: string) => !ALLOWED_MODULE_VALUES.has(m));
+                    // const invalidModule = cleanedList.find((m: string) => !ALLOWED_MODULE_VALUES.has(m));
+                    const invalidModule = cleanedList.find((m: string) => !ALLOWED_MODULE_VALUES.has(m.toLowerCase()));
 
                     if (invalidModule) {
                         throw new Error(`Invalid module detected: "${invalidModule}". Allowed modules are: ${Array.from(ALLOWED_MODULE_VALUES).join(', ')}`);

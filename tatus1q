@@ -1,0 +1,479 @@
+[33mcommit b0a4737a040e9bc21324174a902398da9eb27ab0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Sep 23 18:44:47 2026 +0530
+
+    updated the controllers for the activations
+
+[33mcommit 2e5d8cc7d6c190e525b5668071025fd9ca889b87[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Sep 2 11:16:57 2026 +0530
+
+    before the key activation commit
+
+[33mcommit 97b45134f29a0c6d53711b218f92ead7090ed464[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Aug 24 18:14:09 2026 +0530
+
+    updated the syste m logs and the deleted logs
+
+[33mcommit 654fbfcab8bfb8c2fc6cd34b39b6c586051753ef[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Aug 24 15:00:51 2026 +0530
+
+    updated finance ledger
+
+[33mcommit 90c99b2cbdd25e359e3f87df9df4e2c39c99f19e[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Aug 19 17:33:12 2026 +0530
+
+    updated the notfication controller
+
+[33mcommit 69e01121a311cfc7df41608088d0e267a3f7c0fe[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Aug 19 14:15:10 2026 +0530
+
+    updaated the excel controller
+
+[33mcommit 6739e0ccff2690ce45ec45d348decc12b3f33f20[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Aug 17 10:52:06 2026 +0530
+
+    updated the studnetId in the body in the clubs quiz
+
+[33mcommit d60b77f57e87c0d8f6535ec428c50f3fb35627df[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Aug 17 10:31:23 2026 +0530
+
+    updated te admission api
+
+[33mcommit ac413abef8bf42c6117e5fa8b86b45dbb2655dcc[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Aug 14 16:07:28 2026 +0530
+
+    updated the register token
+
+[33mcommit 7877a65d1e4f92147c6de5853e60cb4b81c20332[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Aug 14 15:45:59 2026 +0530
+
+    updated the property fcm tokens
+
+[33mcommit 3a846c3ee203ec994e6868737c02c2dd2d82a7b0[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Aug 14 15:43:08 2026 +0530
+
+    updated the firebase integration
+
+[33mcommit 482aace42785b796c5a9238454ce4b662544403d[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Aug 13 19:12:22 2026 +0530
+
+    updated the notfication apis and model
+
+[33mcommit a2f48f93f5a2b2e9fcfa8d01be4e1ae249137344[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Aug 3 10:49:33 2026 +0530
+
+    udpated the get all controlelr fo quizes
+
+[33mcommit 94fa6f4c9d60b8ea3ed3056cb6fd168bc3914442[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Aug 3 10:45:08 2026 +0530
+
+    udpated the udpate controller of the update quiz
+
+[33mcommit 9ec20f39d7c0419e0911ce650348c00f998fbc50[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jul 30 12:16:38 2026 +0530
+
+    updated the eb modules
+
+[33mcommit 5c95324ee44b260b40a38780e2479a1204571e63[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jul 25 09:08:16 2026 +0530
+
+    updated the authenticateion response
+
+[33mcommit 99064440770ac11ee2449c7dd2eae50f94fb2962[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jul 22 22:04:58 2026 +0530
+
+    updated principal role permission to assign class
+
+[33mcommit 3f03be07503c02b15afa1e7e15ec04d7518bf6f7[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jul 21 19:05:52 2026 +0530
+
+    updated trasnport modules routes permissions
+
+[33mcommit 620aec9b2c5643438af8c339916f75786756bbde[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jul 21 17:04:26 2026 +0530
+
+    updated the eb modules also
+
+[33mcommit 67c942c54479778b6bd50dae1937f6b24a979f56[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jul 20 19:15:50 2026 +0530
+
+    updated the eb modules
+
+[33mcommit 5611efa7ea0cfc4a46996d9d67e0b9b1ca3836f5[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jul 20 09:48:26 2026 +0530
+
+    udpated the controlers fo bus route
+
+[33mcommit 0fac9cbcacd9ff95f4337b3df121b475f50a739f[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jul 17 15:34:51 2026 +0530
+
+    connected the students fee with the bus route module
+
+[33mcommit 47c1738a5ae6921c14262f54d0910e00597f4579[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jul 16 18:25:55 2026 +0530
+
+    updated the tranpsortaiton dashboard modules
+
+[33mcommit 373e0e16aba87ea68a4e036a12aef46966461228[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jul 16 09:27:19 2026 +0530
+
+    updated the club quiz with academic year
+
+[33mcommit dc47eb999b73c6ceeec350e352ec6b0449d9586e[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jul 15 19:48:46 2026 +0530
+
+    udated the fule model and the bus routes models
+
+[33mcommit a373f7106100551cad812eca3b17bf5e33b98651[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jul 14 14:06:00 2026 +0530
+
+    updated daily log
+
+[33mcommit 20f226c6240457813bd03398ccdab50563d9cb92[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jul 14 11:54:50 2026 +0530
+
+    updated the club and log for transport modules
+
+[33mcommit 130a6210402e33bf3ab87513fcbdfc808d986473[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jul 14 11:49:24 2026 +0530
+
+    updated the club and log for transport modules
+
+[33mcommit 405f1f5117fd4f30867eb480e645d58c41665c86[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jul 13 19:44:42 2026 +0530
+
+    updated the bus and driver model
+
+[33mcommit b6148d1b3e6453121628dee93b3be9e98db93d3d[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jul 11 18:54:48 2026 +0530
+
+    updated the concession to deduct from the first fee head instead of going to last
+
+[33mcommit b7e54c22cc383fcad4af5881c764ef52ef264f1d[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jul 11 12:09:01 2026 +0530
+
+    updated that bills
+
+[33mcommit 8d1a1876ba9bdf1a67fac43393b72861d2649bb9[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jul 10 18:41:59 2026 +0530
+
+    updated the concession
+
+[33mcommit e5357e63162a602d32fafd8fe7cf884e33fb2e05[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jul 10 10:21:47 2026 +0530
+
+    added the safety check before upating the new old type in records
+
+[33mcommit b1ffc011c5485956290dafd0a717928ea9026900[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jul 9 18:36:58 2026 +0530
+
+    updated the student record
+
+[33mcommit 9eaba05c5237cf7e5e16e41783721c15bf2fdf97[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jul 9 15:46:35 2026 +0530
+
+    updated the searchbar and the collect fee
+
+[33mcommit 89485f1e5232204071e9948c8ba7f3a8253a6b8e[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jul 8 15:47:54 2026 +0530
+
+    updated the index in employee model
+
+[33mcommit 6510f3cfbef506aa01b202b1b4fec23f6e2cb725[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jul 8 15:36:00 2026 +0530
+
+    updated the docs
+
+[33mcommit 80ff3612cc57926a99bdd21ad0088af7ec5f43e6[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jul 7 15:30:48 2026 +0530
+
+    updated login issue
+
+[33mcommit 4ebca1cb4f8bd5c5fbeefde98a47b94d4e1d436f[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jul 6 18:03:59 2026 +0530
+
+    updated the clubs quiz module
+
+[33mcommit f0ccf4fa06aee0abbdd496f7e44830a14eb964d5[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jul 6 15:51:33 2026 +0530
+
+    allowed teachers for clubs
+
+[33mcommit f53f29df3c0c85ee9f4c1292e6cd9e8a0cb64f7d[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jul 4 18:10:18 2026 +0530
+
+    allowed permissions to teacher for class, section and for students
+
+[33mcommit dbd28a079b4141b598b63f4627b44a79be105747[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jul 2 19:00:47 2026 +0530
+
+    updated the frontend
+
+[33mcommit 9ceb27e99a0931c9e87ac84e1ef8b55dd83d90d5[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jul 2 15:08:33 2026 +0530
+
+    updated the frontend
+
+[33mcommit dcd25fc140e6cb334aedb38b5cc554bd8f4d46a2[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jul 1 14:34:00 2026 +0530
+
+    updated the permissions
+
+[33mcommit 612d7e60277a2ae4b56336b9d7bc98c5d8afe6ee[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 30 19:02:39 2026 +0530
+
+    updated the code
+
+[33mcommit edf84b2499f056e1c4ce878ee35781961d722f73[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 30 14:26:59 2026 +0530
+
+    updated the profile
+
+[33mcommit 8568ec80fb1aa131f81b04f4acb587db4fdd41fe[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 30 12:50:58 2026 +0530
+
+    lksjdf
+
+[33mcommit 25a534690adc5517b7467e8a3e9ba84eb0a69552[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jun 27 18:12:40 2026 +0530
+
+    updated code
+
+[33mcommit c7a18c34209573e44a6a09e69cc1681c7b3a97fe[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jun 26 19:04:17 2026 +0530
+
+    updated ba the model of employee profile
+
+[33mcommit 9130bb7fb504153124fb46a6bb904e929755c2ad[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jun 25 19:57:05 2026 +0530
+
+    updated the things
+
+[33mcommit 42fd63a3e041dbbe11bbca08404f295747be6ca6[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jun 25 15:59:30 2026 +0530
+
+    updated vers
+
+[33mcommit 0ec043243cdcc3869d4bd6dadafe6fc88bec6279[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jun 25 15:57:45 2026 +0530
+
+    updated vers
+
+[33mcommit a304afd277beb6db58794c4d0d523fdc23606401[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jun 24 19:46:20 2026 +0530
+
+    updated te caleander api
+
+[33mcommit 8247e1b137f27fc5b758bd7011b6cb3e5584e756[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jun 24 14:13:40 2026 +0530
+
+    updated the cron job and homework modle and attendance module
+
+[33mcommit 3408f8b7bb6568016fcf0b44d8db159f919aa083[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 23 19:54:58 2026 +0530
+
+    updated the bill status and field status
+
+[33mcommit aa8d9d6fdd962edca77a7fa6778b22a799c01d85[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 23 14:51:16 2026 +0530
+
+    updated the fee configuration model
+
+[33mcommit f19a9ee54cea856f69fae658c026488725591dfa[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jun 22 19:26:37 2026 +0530
+
+    updated the fields
+
+[33mcommit fb48a8353a66b65bf50f7e64dd716f35fb532d02[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jun 19 18:32:25 2026 +0530
+
+    updated the progress bar controller
+
+[33mcommit da40d7d08f638aae81ae284ef01c7d1814e7ba1e[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jun 19 09:32:46 2026 +0530
+
+    updated the get record v1 controller
+
+[33mcommit daac756c73d1675f08061e720fb8cae407110049[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jun 18 16:49:53 2026 +0530
+
+    updated the class wise fee due
+
+[33mcommit 48220bac1d8ad5eea9f03d8e5f0c43abc012ca24[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed Jun 17 19:51:08 2026 +0530
+
+    updated the attendance and admission routes
+
+[33mcommit d3343ffe0602cfd805844a88b1533c0fd4d2e356[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 16 18:37:40 2026 +0530
+
+    updated the admssion book
+
+[33mcommit 4d91807f6d74c3ab11f4fc6b53a04b6a1278d999[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jun 15 20:03:34 2026 +0530
+
+    updated the bill book module
+
+[33mcommit 629e9dee8f23c13d126c56fbb94078265ce3a3d5[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon Jun 15 14:26:50 2026 +0530
+
+    updated the fee transaction fee receipt
+
+[33mcommit dc0829d92cb5a4c0d9f7ca4c8a4a5e499d48b429[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jun 13 18:50:13 2026 +0530
+
+    updated the dynamic fee structures
+
+[33mcommit 27c11bcf7b48df5f01f1ac71981ef6ab1970509c[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jun 13 18:47:50 2026 +0530
+
+    updated the dynamic fee structures
+
+[33mcommit 74ddc0b713ac6a0eb9e4649063ce2904b331d6c5[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 9 14:31:07 2026 +0530
+
+    uploaded the permission
+
+[33mcommit d2c25a61ec22c594757f4ab44042b6e8fd4f1502[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 9 14:05:40 2026 +0530
+
+    updated the student document
+
+[33mcommit 6a7918d15219b2f50d050a7e2c86a90a45d96ce3[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Tue Jun 9 12:59:03 2026 +0530
+
+    updated accontant permssion
+
+[33mcommit 13c8b22e683a8c6e263760abdcadcc1eb0f6eaad[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Sat Jun 6 18:47:06 2026 +0530
+
+    added filters and updated the club quiz
+
+[33mcommit 7002604e4ffd2a59880d2644fb3d99f322d5a26d[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jun 5 18:24:11 2026 +0530
+
+    updated the controller
+
+[33mcommit 897f99c7f5e04778d2be781ebd18bafa3d13df9b[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jun 5 11:56:36 2026 +0530
+
+    removed unused variables
+
+[33mcommit 93c3a2c1b937ed61c45020622a8e4d7012395850[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jun 5 11:56:02 2026 +0530
+
+    removed unused variables
+
+[33mcommit 6b56d01250c8e9925f22e3f556b419d12d2ac03d[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri Jun 5 09:26:13 2026 +0530
+
+    final commit
+
+[33mcommit 80175f272a6a85975f7e32c111b0566b1f3a32c0[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu Jun 4 19:36:41 2026 +0530
+
+    updated almost every controller
+
+[33mcommit f65b733eb57dc36a045281896012ef943bbcf39e[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri May 22 23:51:15 2026 +0530
+
+    updated the controllers
+
+[33mcommit 8132cece6a73a5ea52fa8f83e57d237bcf933953[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Thu May 21 20:37:57 2026 +0530
+
+    updated the controlers for reports
+
+[33mcommit 85e00abf0352443caccfddf058c6b5aa9aa18130[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Mon May 18 20:01:35 2026 +0530
+
+    created the mark sheet, finance , websockets connection
+
+[33mcommit 45844a68da4a4f2fcbea10f156b670f2d53509fe[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Fri May 15 21:11:53 2026 +0530
+
+    fee structure
+
+[33mcommit 36ff088580f62a802cacc5328027aee50f5b16e6[m
+Author: MB-Prabhu <prabhukumarmb@gmail.com>
+Date:   Wed May 13 20:24:57 2026 +0530
+
+    first commit

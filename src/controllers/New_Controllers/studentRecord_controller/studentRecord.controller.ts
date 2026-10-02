@@ -509,7 +509,7 @@ export const collectFeeAndManageRecord = async (req: RoleBasedRequest, res: Resp
                 assignedBillNo = activeBillBook.billNumber;
             }
 
-            console.log("Assigned Bill Number for this receipt:", assignedBillNo);
+            // console.log("Assigned Bill Number for this receipt:", assignedBillNo);
         }
 
         // 9. GENERATE RECEIPT (If Paid > 0)
