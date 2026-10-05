@@ -214,7 +214,7 @@ export const markAttendance = async (req: RoleBasedRequest, res: Response) => {
                     title: `Attendance: ${rec.status}`,
                     message: `${rec.studentName} was marked ${rec.status} on ${date}`,
                     referenceId: attendanceDoc._id.toString(),
-                    referenceModel: 'Attendance',
+                    referenceModel: 'AttendanceModel',
                     path: `/dashboard/student/attendance`,
                     targetAudience: 'parent',
                     targetStudents: [rec.studentId],

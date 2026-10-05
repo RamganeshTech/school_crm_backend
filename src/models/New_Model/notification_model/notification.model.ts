@@ -13,6 +13,7 @@ export interface INotification extends Document {
     message: string;
 
     // Links back to the source document (e.g. the Announcement _id)
+    targetStudents: Types.ObjectId[];
     referenceId: Types.ObjectId;
     referenceModel: string; // e.g. 'Announcement' — lets you populate dynamically later if needed
 
@@ -54,6 +55,9 @@ const NotificationSchema = new Schema<INotification>(
             default: 'announcement',
         },
 
+
+        targetStudents: { type: [Schema.Types.ObjectId], ref: 'StudentNewModel', default: [] },
+
         title: { type: String, required: true, trim: true },
         message: { type: String, required: true, trim: true },
 
@@ -73,7 +77,7 @@ const NotificationSchema = new Schema<INotification>(
 
         academicYear: { type: String },
 
-        createdBy: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+        createdBy: { type: Schema.Types.ObjectId, required: true, ref: 'UserModel' },
 
         readBy: { type: [ReadEntrySchema], default: [] },
     },

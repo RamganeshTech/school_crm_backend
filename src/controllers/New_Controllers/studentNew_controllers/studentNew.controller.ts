@@ -714,7 +714,13 @@ export const assignStudentToParent = async (req: RoleBasedRequest, res: Response
         }
 
 
-        console.log("5555555555")
+
+        const studentNew = await StudentNewModel.findByIdAndUpdate(
+            studentId,
+            { parentId: parentId },
+            { new: true } // Returns the updated document (optional, for logging)
+        )
+        // console.log("5555555555")
         // We use findOneAndUpdate with $addToSet
         // $addToSet: Adds the ID only if it does NOT already exist in the array.
         const updatedParent = await UserModel.findByIdAndUpdate(
@@ -741,11 +747,10 @@ export const assignStudentToParent = async (req: RoleBasedRequest, res: Response
             status: "success"
         });
 
-        console.log("66666666666", updatedParent)
 
         res.status(200).json({ ok: true, data: updatedParent, message: `Link Success, Student linked to Parent ${updatedParent.userName}` });
     } catch (error: any) {
-        console.error("assing Students Error:", error);
+        // console.error("assing Students Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
 
     }
@@ -793,7 +798,7 @@ export const removeStudentFromParent = async (req: RoleBasedRequest, res: Respon
         });
 
 
-        console.log("Student Removed. Updated Parent:", updatedParent);
+        // console.log("Student Removed. Updated Parent:", updatedParent);
 
         return res.status(200).json({
             ok: true,
@@ -885,7 +890,7 @@ export const submitProfileUpdateRequest = async (req: RoleBasedRequest, res: Res
         return res.status(201).json({ ok: true, message: "Update request submitted.", data: newRequest });
 
     } catch (error: any) {
-        console.error("Submit Update Request Error:", error);
+        // console.error("Submit Update Request Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error", error: error?.message });
     }
 };
@@ -932,7 +937,7 @@ export const getAllPendingRequests = async (req: RoleBasedRequest, res: Response
 
         return res.status(200).json({ ok: true, data: requests });
     } catch (error: any) {
-        console.error("Get All Pending Requests Error:", error);
+        // console.error("Get All Pending Requests Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error", error: error?.message });
     }
 };

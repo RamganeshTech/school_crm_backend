@@ -76,6 +76,7 @@ export interface IStudentNew extends Document {
     schoolId: Types.ObjectId;
     srId?: string;
     newOld?: string;
+    parentId: Types.ObjectId;
     studentName: string;
     studentImage?: IStudentUpload | null;
     currentClassId?: Types.ObjectId | null;
@@ -114,6 +115,7 @@ const StudentNewSchema = new Schema<IStudentNew>({
 
     currentClassId: { type: mongoose.Schema.Types.ObjectId, ref: "ClassModel", default: null },
     currentSectionId: { type: mongoose.Schema.Types.ObjectId, ref: "SectionModel", default: null },
+    parentId: { type: mongoose.Schema.Types.ObjectId, ref: "UserModel", default: null },
 
     isActive: { type: Boolean, default: false },
 

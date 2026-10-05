@@ -6,6 +6,7 @@ import NotificationModel from '../../../models/New_Model/notification_model/noti
 import type { IUserRole } from '../../../models/New_Model/UserModel/userModel.model.js';
 import { messaging } from '../../../config/firebaseAdmin.js';
 import { getFcmTokensForAudience } from '../../../utils/getFcmTokensForAudience.js';
+import UserModel from '../../../models/New_Model/UserModel/userModel.model.js';
 
 // Roles allowed to create notifications — same staff set used elsewhere, parents never create these
 const CREATOR_ROLES: IUserRole[] = ['correspondent', 'principal', 'viceprincipal', 'teacher', 'administrator'];
@@ -153,7 +154,7 @@ export const getAllNotifications = async (req: RoleBasedRequest, res: Response) 
         const unreadOnly = true;
 
 
-        const filter = {
+        const filter :any = {
             schoolId: user.schoolId,
             targetAudience: { $in: audienceValues },
             'readBy.userId': { $ne: new Types.ObjectId(user._id) },
@@ -174,6 +175,20 @@ export const getAllNotifications = async (req: RoleBasedRequest, res: Response) 
         //         .lean(),
         //     NotificationModel.countDocuments(filter),
         // ]);
+
+
+        if (user.role === 'parent') {
+            // the parent's linked students live on the user doc
+            const parentDoc = await UserModel.findById(user._id).select('studentId').lean();
+            const childIds = parentDoc?.studentId ?? [];
+
+            filter.$or = [
+                { targetStudents: { $exists: false } }, // old notifications
+                { targetStudents: { $size: 0 } },       // announcements, homework
+                { targetStudents: { $in: childIds } },  // only this parent's children
+            ];
+        }
+
 
         const notifications = await NotificationModel.find(filter)
             .sort({ createdAt: -1 })
