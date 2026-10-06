@@ -733,6 +733,41 @@ export const computeFeeStatus = (
     return anyActiveTermUnpaid ? "unpaid" : "paid";
 };
 
+
+/**
+ * A fee head unlocks its modules when it is fully paid (due <= 0)
+ * and it actually has a structure amount > 0.
+ */
+export const computeUnlockedModules = (
+    feeHeadsConfig: any[],        // FeeStructureConfigModel.feeHeads (+ bus heads)
+    feeStructurev1: any,
+    duesv1: any,
+    existingUnlocked: string[] = []
+): string[] => {
+    const getVal = (map: any, key: string) =>
+        Number(map?.get?.(key) ?? map?.[key] ?? 0);
+
+    const unlocked = new Set<string>(existingUnlocked); // never re-lock
+
+    for (const headObj of feeHeadsConfig) {
+        const head = headObj?.feeHead;
+        const modules: string[] = headObj?.modules || [];
+        if (!head || modules.length === 0) continue;
+
+        const structure = getVal(feeStructurev1, head);
+        // const due = getVal(duesv1, head);
+        const dueRaw = duesv1?.get?.(head) ?? duesv1?.[head];
+        const due = dueRaw !== undefined ? Number(dueRaw) : structure;
+
+
+        if (structure > 0 && due <= 0) {
+            modules.forEach((m) => unlocked.add(m));
+        }
+    }
+
+    return Array.from(unlocked);
+}
+
 export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Response) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1038,6 +1073,16 @@ export const collectFeeAndManageRecordV1 = async (req: RoleBasedRequest, res: Re
             studentRecord.duesv1,
             schoolDoc.academicTermDates,
             currentYear!
+        );
+
+
+        //  STEP 9.1
+        // 🔓 Auto-unlock modules based on fully-paid fee heads
+        studentRecord.unlockedModules = computeUnlockedModules(
+            effectiveFeeHeadsConfig,                 // already built above (includes bus heads)
+            studentRecord.feeStructurev1,
+            studentRecord.duesv1,
+            studentRecord.unlockedModules || []
         );
 
         studentRecord.isActive = true
@@ -3027,7 +3072,7 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
         if (!schoolId || !studentId) {
             return res.status(400).json({ ok: false, message: "schoolId and studentId are required" });
         }
- 
+
         // 1. Fetch Main Student Identity (Always Required)
         // We populate class/section here so we have fallback names if the record doesn't exist
         const studentMain: any = await StudentNewModel.findOne({ _id: studentId, schoolId })
@@ -3195,33 +3240,38 @@ export const getStudentRecordByIdV1 = async (req: RoleBasedRequest, res: Respons
 
 
 export const deleteStudentRecord = async (req: RoleBasedRequest, res: Response) => {
-    // // Start Transaction for safety
-    // const session = await mongoose.startSession();
-    // session.startTransaction();
+    // Start Transaction for safety
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
     try {
         const { id } = req.params; // The StudentRecord ID (_id)
 
         if (!id) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({ ok: false, message: "Record ID is required" });
         }
 
         // 1. Find the Record
-        // const record = await StudentRecordModel.findById(id).session(session);
-        // if (!record) {
-        //     return res.status(404).json({ ok: false, message: "Student Record not found" });
-        // }
-
-        // // 2. Delete All Linked Receipts (Transactions)
-        // await FeeTransactionModel.deleteMany({ recordId: id }).session(session);
-
-        // // 3. Delete the Record itself
-        const studentRecord = await StudentRecordModel.findByIdAndDelete(id)
-        // .session(session);
-
+        const studentRecord = await StudentRecordModel.findById(id).session(session);
         if (!studentRecord) {
+            await session.abortTransaction(); session.endSession();
             return res.status(404).json({ ok: false, message: "Student Record not found" });
         }
+
+
+        // 2. Delete All Linked Receipts (Transactions)
+        await FeeTransactionModel.deleteMany({ recordId: id }).session(session);
+
+        // // 3. Delete the Record itself
+        await StudentRecordModel.findByIdAndDelete(id).session(session);
+        // const studentRecord = await StudentRecordModel.findByIdAndDelete(id)
+        // // .session(session);
+
+        // if (!studentRecord) {
+        //     return res.status(404).json({ ok: false, message: "Student Record not found" });
+        // }
 
         // // NOTE: We do NOT delete the Student Profile (StudentNewModel)
         // // because the student might have records in other years.
@@ -3244,8 +3294,8 @@ export const deleteStudentRecord = async (req: RoleBasedRequest, res: Response) 
             status: "success"
         });
 
-        // await session.commitTransaction();
-        // session.endSession();
+        await session.commitTransaction();
+        session.endSession();
 
         return res.status(200).json({
             ok: true,
@@ -3254,8 +3304,8 @@ export const deleteStudentRecord = async (req: RoleBasedRequest, res: Response) 
         });
 
     } catch (error: any) {
-        // await session.abortTransaction();
-        // session.endSession();
+        await session.abortTransaction();
+        session.endSession();
         console.error("Delete Record Error:", error);
         return res.status(500).json({ ok: false, message: "Internal server error", error: error.message });
     }
@@ -3890,7 +3940,7 @@ function decodeUnlockCode(rawCode: string): DecodedPayload {
 // =========================================================
 export const activateFromUnlockCodeV1 = async (req: RoleBasedRequest, res: Response) => {
     try {
-        const { code , studentId} = req.body;
+        const { code, studentId } = req.body;
 
         if (!code || typeof code !== 'string') {
             return res.status(400).json({ ok: false, message: 'A valid activation code is required.' });
@@ -3909,16 +3959,16 @@ export const activateFromUnlockCodeV1 = async (req: RoleBasedRequest, res: Respo
         }
 
         // --- DEBUG BLOCK: REMOVE AFTER TESTING ---
-        console.log("\n=== UNLOCK CODE DECODE TEST ===");
-        console.log("1. School Code:", decoded.schoolCode);
-        console.log("2. Student SRID:", decoded.srId);
-        console.log("3. Student Name:", decoded.studentName);
-        console.log("4. Academic Year:", decoded.academicYear);
-        console.log("5. Class/Section:", `${decoded.className} / ${decoded.sectionName}`);
-        console.log("6. Type:", decoded.newOld);
-        console.log("7. Module Bitmask (Int):", decoded.moduleBitmask);
-        console.log("8. Extracted Checksum (Hex):", decoded.checksumBytes.toString('hex'));
-        console.log("===============================\n");
+        // console.log("\n=== UNLOCK CODE DECODE TEST ===");
+        // console.log("1. School Code:", decoded.schoolCode);
+        // console.log("2. Student SRID:", decoded.srId);
+        // console.log("3. Student Name:", decoded.studentName);
+        // console.log("4. Academic Year:", decoded.academicYear);
+        // console.log("5. Class/Section:", `${decoded.className} / ${decoded.sectionName}`);
+        // console.log("6. Type:", decoded.newOld);
+        // console.log("7. Module Bitmask (Int):", decoded.moduleBitmask);
+        // console.log("8. Extracted Checksum (Hex):", decoded.checksumBytes.toString('hex'));
+        // console.log("===============================\n");
 
         // --- 2. Resolve school + its active public key ---
         const school = await SchoolModel.findOne({ schoolCode: decoded.schoolCode });
@@ -3928,14 +3978,14 @@ export const activateFromUnlockCodeV1 = async (req: RoleBasedRequest, res: Respo
 
         // 🟢 ADD THIS DEBUG BLOCK 🟢
 
-        console.log("--- KEY LOOKUP DEBUG ---");
+        // console.log("--- KEY LOOKUP DEBUG ---");
 
-        console.log("Target School Name (ObjectId):", school);
-        console.log("Target School ID (ObjectId):", school._id);
-        console.log("Target School ID (String):", school._id.toString());
+        // console.log("Target School Name (ObjectId):", school);
+        // console.log("Target School ID (ObjectId):", school._id);
+        // console.log("Target School ID (String):", school._id.toString());
 
         const allKeys = await SchoolPublicKeyModel.find({});
-        console.log("ALL Keys currently in DB:", allKeys.map(k => ({ id: k.schoolId, active: k.isActive })));
+        // console.log("ALL Keys currently in DB:", allKeys.map(k => ({ id: k.schoolId, active: k.isActive })));
         // 🟢 END DEBUG BLOCK 🟢
 
         const keyRecord = await SchoolPublicKeyModel.findOne({ schoolId: school._id, isActive: true });
@@ -3957,9 +4007,9 @@ export const activateFromUnlockCodeV1 = async (req: RoleBasedRequest, res: Respo
 
         // 🌟 FIX 2: STRICT CROSS-CHECK — Ensure the code belongs to the profile being viewed!
         if (studentId && student._id.toString() !== studentId) {
-            return res.status(400).json({ 
-                ok: false, 
-                message: `Code Mismatch! The Code you have entered is not a valid code for this student.` 
+            return res.status(400).json({
+                ok: false,
+                message: `Code Mismatch! The Code you have entered is not a valid code for this student.`
             });
         }
 
@@ -4059,5 +4109,41 @@ export const activateFromUnlockCodeV1 = async (req: RoleBasedRequest, res: Respo
             message: error?.message || 'Internal server error',
             error: error.message
         });
+    }
+};
+
+
+export const syncUnlockedModules = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { schoolId, recordId, academicYear } = req.body;
+        if (!schoolId || !recordId || !academicYear) {
+            return res.status(400).json({ ok: false, message: "schoolId, recordId, academicYear required" });
+        }
+
+        const feeConfig = await FeeStructureConfigModel.findOne({ schoolId });
+        if (!feeConfig) return res.status(404).json({ ok: false, message: "Fee config not found" });
+
+        const record: any = await StudentRecordModel.findOne({ schoolId, _id: recordId, academicYear });
+        if (!record) return res.status(404).json({ ok: false, message: "Student record not found" });
+
+        const busHeadsConfig = record.isBusApplicable
+            ? BUS_FEE_HEADS.map((head) => ({
+                feeHead: head,
+                associatedTerm: BUS_TERM_MAP[head],
+                isTerm: true,
+            }))
+            : [];
+
+        record.unlockedModules = computeUnlockedModules(
+            [...feeConfig.feeHeads, ...busHeadsConfig],
+            record.feeStructurev1,
+            record.duesv1,
+            record.unlockedModules || []
+        );
+        await record.save();
+
+        return res.status(200).json({ ok: true, data: { unlockedModules: record.unlockedModules } });
+    } catch (error: any) {
+        return res.status(500).json({ ok: false, message: error.message });
     }
 };

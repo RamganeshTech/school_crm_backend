@@ -240,6 +240,7 @@ StudentNewSchema.index({
     schoolId: 1,
     studentName: 1,
 });
+StudentNewSchema.index({ parentId: 1 });
 
 const StudentNewModel = mongoose.model('StudentNewModel', StudentNewSchema);
 export default StudentNewModel;

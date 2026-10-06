@@ -7,6 +7,7 @@ import {
   getAllStudentRecordsV1,
   getStudentRecordById, getStudentRecordByIdV1, revertFeeTransaction,
   revertFeeTransactionV1,
+  syncUnlockedModules,
   toggleStudentRecordStatus, toggleStudentRecordStatusV1, updateConcessionDetails,
   updateConcessionDetailsV1,
   updateStudentRecordNewOldType,
@@ -159,7 +160,6 @@ studentRecordRoutes.patch(
   "/togglestatus/:id",
   multiRoleAuth("administrator", "correspondent", "accountant", ),
   featureGuard("studentRecord"),
-
   toggleStudentRecordStatus
 );
 
@@ -167,7 +167,6 @@ studentRecordRoutes.patch(
   "/v1/togglestatus/:studentId",
   multiRoleAuth("administrator", "correspondent", "accountant"),
   featureGuard("studentRecord"),
-
   toggleStudentRecordStatusV1
 );
 
@@ -192,7 +191,6 @@ studentRecordRoutes.put(
   "/revertreceipt",
   multiRoleAuth("correspondent", "accountant", "principal", "administrator"),
   featureGuard("studentRecord"),
-
   revertFeeTransaction
 );
 
@@ -202,12 +200,8 @@ studentRecordRoutes.put(
   "/v1/revertreceipt",
   multiRoleAuth("correspondent", "accountant", "principal", "administrator"),
   featureGuard("studentRecord"),
-
   revertFeeTransactionV1
 );
-
-
-
 
 //  assing the studnet to class or remove the student from class
 
@@ -218,17 +212,11 @@ studentRecordRoutes.put(
   assignStudentToClass
 );
 
-
-
-
 studentRecordRoutes.put(
   "/remove",
   multiRoleAuth("correspondent", "administrator", "accountant"),
   removeStudentFromClass
 );
-
-
-
 
 studentRecordRoutes.put(
   "/v1/assign",
@@ -236,16 +224,11 @@ studentRecordRoutes.put(
   assignStudentToClassv1
 );
 
-
-
-
 studentRecordRoutes.get(
   "/v1/export",
   multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"),
   exportStudentRecordsV1
 );
-
-
 
 studentRecordRoutes.post(
   "/v1/activate-modules",
@@ -254,6 +237,11 @@ studentRecordRoutes.post(
 );
 
 
+studentRecordRoutes.put(
+  "/v1/activate-modules/online",
+  multiRoleAuth("correspondent", "administrator", "accountant", "principal", "viceprincipal"),
+  syncUnlockedModules
+);
 
 
 export default studentRecordRoutes;

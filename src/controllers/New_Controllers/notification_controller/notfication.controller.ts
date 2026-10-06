@@ -7,6 +7,7 @@ import type { IUserRole } from '../../../models/New_Model/UserModel/userModel.mo
 import { messaging } from '../../../config/firebaseAdmin.js';
 import { getFcmTokensForAudience } from '../../../utils/getFcmTokensForAudience.js';
 import UserModel from '../../../models/New_Model/UserModel/userModel.model.js';
+import StudentNewModel from '../../../models/New_Model/StudentModel/studentNew.model.js';
 
 // Roles allowed to create notifications — same staff set used elsewhere, parents never create these
 const CREATOR_ROLES: IUserRole[] = ['correspondent', 'principal', 'viceprincipal', 'teacher', 'administrator'];
@@ -146,6 +147,8 @@ export const getAllNotifications = async (req: RoleBasedRequest, res: Response) 
             return res.status(401).json({ ok: false, message: 'Unauthorized' });
         }
 
+        const schoolId = user.schoolId
+
         // const page = Math.max(Number(req.query.page) || 1, 1);
         // const limit = Math.max(Number(req.query.limit) || 10, 1);
         // const skip = (page - 1) * limit;
@@ -154,7 +157,7 @@ export const getAllNotifications = async (req: RoleBasedRequest, res: Response) 
         const unreadOnly = true;
 
 
-        const filter :any = {
+        const filter: any = {
             schoolId: user.schoolId,
             targetAudience: { $in: audienceValues },
             'readBy.userId': { $ne: new Types.ObjectId(user._id) },
@@ -182,10 +185,52 @@ export const getAllNotifications = async (req: RoleBasedRequest, res: Response) 
             const parentDoc = await UserModel.findById(user._id).select('studentId').lean();
             const childIds = parentDoc?.studentId ?? [];
 
-            filter.$or = [
-                { targetStudents: { $exists: false } }, // old notifications
-                { targetStudents: { $size: 0 } },       // announcements, homework
-                { targetStudents: { $in: childIds } },  // only this parent's children
+
+            
+            // old version
+            // filter.$or = [
+            //     { targetStudents: { $exists: false } }, // old notifications
+            //     { targetStudents: { $size: 0 } },       // announcements, homework
+            //     { targetStudents: { $in: childIds } },  // only this parent's children
+            // ];
+
+            //  new version
+            // 2. their classes and sections
+            const children = await StudentNewModel
+                .find({ _id: { $in: childIds }, schoolId: schoolId })
+                .select('classId sectionId')
+                .lean();
+
+
+
+            const classIds = children.map((c: any) => c.classId).filter(Boolean);
+            const sectionIds = children.map((c: any) => c.sectionId).filter(Boolean);
+
+
+            filter.$and = [
+                // attendance: only this parent's children
+                {
+                    $or: [
+                        { targetStudents: { $exists: false } },
+                        { targetStudents: { $size: 0 } },
+                        { targetStudents: { $in: childIds } },
+                    ],
+                },
+                // homework / class announcements: only their children's classes and sections
+                {
+                    $or: [
+                        { targetClasses: { $exists: false } },
+                        { targetClasses: { $size: 0 } },
+                        {
+                            targetClasses: { $in: classIds },
+                            $or: [
+                                { targetSections: { $exists: false } },
+                                { targetSections: { $size: 0 } },
+                                { targetSections: { $in: sectionIds } },
+                            ],
+                        },
+                    ],
+                },
             ];
         }
 
