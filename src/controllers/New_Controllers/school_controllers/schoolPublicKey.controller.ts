@@ -1,6 +1,8 @@
 // controllers/schoolPublicKey.controller.ts
 import { type Response } from 'express';
 import SchoolPublicKeyModel from '../../../models/New_Model/SchoolModel/schoolPublicKey.model.js';
+import mongoose from 'mongoose';
+import type { RoleBasedRequest } from '../../../utils/types.js';
 
 // =========================================================
 // 1. GET PUBLIC KEY FOR A SCHOOL (V1)
@@ -111,3 +113,57 @@ export const upsertSchoolPublicKeyV1 = async (req: any, res: Response) => {
         });
     }
 };
+
+
+
+
+// controllers/SchoolPublicKeyController/schoolDesktopTracking.controller.ts
+
+export const getSchoolDesktopActivationStatus = async (req: RoleBasedRequest, res: Response) => {
+    try {
+        const { schoolId } = req.params
+
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({
+                ok: false,
+                message: 'Invalid school id'
+            })
+        }
+
+        const record = await SchoolPublicKeyModel.findOne({ schoolId })
+            .select('registeredAt isActive createdAt updatedAt')
+            .lean()
+
+        if (!record) {
+            return res.status(200).json({
+                ok: true,
+                message: 'Desktop app has not been activated for this school',
+                data: {
+                    schoolId,
+                    isActivated: false,
+                    isActive: false,
+                    activatedAt: null,
+                    lastUpdatedAt: null
+                }
+            })
+        }
+
+        return res.status(200).json({
+            ok: true,
+            message: 'Desktop activation status fetched successfully',
+            data: {
+                schoolId,
+                isActivated: true,
+                isActive: record.isActive,
+                activatedAt: record.registeredAt,
+                lastUpdatedAt: record.updatedAt
+            }
+        })
+    } catch (error: any) {
+        console.error('getSchoolDesktopActivationStatus error:', error)
+        return res.status(500).json({
+            ok: false,
+            message: error.message || 'Failed to fetch desktop activation status'
+        })
+    }
+}

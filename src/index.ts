@@ -73,6 +73,7 @@ import schoolPubllicKeyRoutes from './routes/New_Routes/school_routes/schoolPubl
 import path from 'path';
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
+import desktopDownloadRoutes from './routes/New_Routes/desktopDownload_routes/desktopDownload.routes.js';
 
 
 
@@ -168,7 +169,7 @@ app.use('/api/notifications', notficationRoutes)
 app.use('/api/download', downloadRoutes)
 
 
-console.log('Resolved downloads path:', path.join(__dirname, 'public/downloads'))
+// console.log('Resolved downloads path:', path.join(__dirname, 'public/downloads'))
 
 // app.use('/api/app/downloads', express.static(path.join(__dirname, 'public/downloads')))
 app.use('/api/app/downloads', express.static(path.join(__dirname, '..', 'public/downloads')))
@@ -186,9 +187,8 @@ app.get('/api/downloads/latest', (req, res) => {
     })
 })
 
-// app.use("/api/feereceipt")
 
-
+app.use('/api/downloads', desktopDownloadRoutes)
 
 
 app.get("/api/health-check", (req: RoleBasedRequest, res: Response) => {

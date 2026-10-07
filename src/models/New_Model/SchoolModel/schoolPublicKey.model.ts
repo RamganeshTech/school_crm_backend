@@ -6,6 +6,7 @@ export interface ISchoolPublicKey {
     publicKey: string
     registeredAt: Date
     isActive: boolean
+    updatedAt: Date
 }
 
 const SchoolPublicKeySchema = new Schema<ISchoolPublicKey>(
